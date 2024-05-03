@@ -1,0 +1,6 @@
+name: panISa1
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - panisa=0.1.6

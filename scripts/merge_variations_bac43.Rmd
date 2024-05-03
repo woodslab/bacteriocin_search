@@ -1,0 +1,488 @@
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+```{r plasmid and bac genes coverage}
+plasmid_coverage <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_summary.plasmid_coverage.csv", sep='\t', header=T,row.names=NULL) 
+plasmid_coverage1 <- plasmid_coverage %>% select(c("clone","numreads","covbases","coverage","meandepth"))
+colnames(plasmid_coverage1) <- (c("clone","p_numreads","p_covbases","p_coverage","p_meandepth"))
+
+bac_coverage <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_summary.bac_genes_coverage.csv", sep='\t', header=T,row.names=NULL) 
+bac_coverage1 <- bac_coverage%>% select(c("clone","numreads","covbases","coverage","meandepth"))
+colnames(bac_coverage1) <- (c("clone","bac_numreads","bac_covbases","bac_coverage","bac_meandepth"))
+
+bac_plasmid_coverage <- merge(plasmid_coverage1,bac_coverage1,by="clone")
+
+```
+
+
+```{r read in assembly stats}
+stats <- read.csv("20230503_within-host/assembly_stats.csv", sep=',', header=T,row.names=NULL)
+assembly_cov <- stats %>% select(c("clone_id","coverage"))
+colnames(assembly_cov) <- c("clone","assembly_coverage")
+
+cov_assemblycov <- merge(bac_plasmid_coverage,assembly_cov,by='clone', all.x=TRUE)
+
+#calculate the ratio of coverage over the plasmid to coverage over the entire assembly 
+# cov_ratio > 1 = more coverage to plasmid
+# cov_ratio < 1 = more coverage to assembly as whole 
+cov_assemblycov$cov_ratio <- cov_assemblycov$p_meandepth/cov_assemblycov$assembly_coverage 
+
+```
+
+
+```{r blast id'ed bac43}
+blast <- read.csv("20230503_within-host/clustered_hits.csv", sep=',', header=T,row.names=NULL)
+blast_bac43 <- blast %>% select(c("source","cluster")) %>% filter(cluster == "clust2")
+colnames(blast_bac43) <- c("clone","blast_bac43")
+
+cov_blast <- merge(cov_assemblycov,blast_bac43,by="clone",all.x=TRUE)
+```
+
+
+```{r remove isolates with sparse plasmid coverage - p_meandepth <45}
+cov_blast_filter <- cov_blast %>% filter(p_meandepth>45 & p_coverage >55)
+isolates <- cov_blast_filter %>% select("clone")
+colnames(isolates) <- c("Clone")
+```
+
+
+
+
+```{r low cov regions - 10%}
+low_cov <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_summary.low_coverage_intervals_bac4310.txt", sep='\t', header=T,row.names=NULL)
+#only keep isolates of interest
+low_cov_isolates <- merge(isolates,low_cov, by="Clone")
+
+```
+
+
+
+```{r annotated snps}
+snps <- read.csv("20230503_within-host/17_snpeff/bac43/summary/bac43_annotated_summary.csv", sep=';', header=T,row.names=NULL) 
+colnames(snps) <- colnames(snps)[2:ncol(snps)]
+snps <- snps[1:(ncol(snps)-1)]
+samples <- snps %>% select(-c(CHROM,POS,ID,REF,ALT,QUAL,FILTER,FORMAT,X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.)) %>% colnames()
+
+snps_pivot <- pivot_longer(snps,cols=all_of(samples), names_to= "Clone", values_to="Qual_metrics")
+snps_pivot$Clone <- gsub("\\.", "-", snps_pivot$Clone)
+
+#separate quality metric values into their own columns
+snps_pivot1 <- snps_pivot %>% separate(Qual_metrics,c('DP','RO','AO','QA'),sep =':')
+
+#fix formating on QA and AO values that were formatted incorrectly during vcf merge
+snps_pivot1$QA <- gsub("\\[|\\]", "", snps_pivot1$QA)
+snps_pivot1$QA <- gsub("\\None, ", "", snps_pivot1$QA)
+snps_pivot1$QA <- gsub("\\, None", "", snps_pivot1$QA)
+snps_pivot1$AO <- gsub("\\[|\\]", "", snps_pivot1$AO)
+snps_pivot1$AO <- gsub("\\None, ", "", snps_pivot1$AO)
+snps_pivot1$AO <- gsub("\\, None", "", snps_pivot1$AO)
+
+#keep only rows where clone has the snp
+snps_filter <- filter(snps_pivot1, DP != "None") 
+snps_filter1 <- snps_filter %>% select(-c(CHROM,ID,FILTER,FORMAT,QUAL)) #remove unnecessary columns
+
+snps_filter1$AO <- as.integer(snps_filter1$AO)
+
+#only keep isolates of interest
+snps_filter_isolates <- merge(isolates, snps_filter1, by="Clone")
+num_snps <- snps_filter_isolates %>% select(c(POS,REF,ALT)) %>% distinct()
+
+
+
+```
+
+
+
+```{r remove snps that fall in low cov regions}
+snps_lc <- merge(snps_filter_isolates,low_cov, by="Clone", all=TRUE)
+snps_lc$between <- between(snps_lc$POS,snps_lc$Start_Position,snps_lc$Stop_Position)
+snps_lc$AO <- as.integer(snps_lc$AO)
+
+snps_lc_btwn_true<- filter(snps_lc,between ==TRUE)
+
+#remove snp calls that fall in low cov regions 
+merged_snps_lc <- merge(snps_filter_isolates,snps_lc_btwn_true, all.x=TRUE )
+accepted_variants <- merged_snps_lc [is.na(merged_snps_lc$between), ] #only keep snp calls where the call in not in a low cov region
+accepted_variants$DPtoRO <- round((as.numeric(accepted_variants$RO)/as.numeric(accepted_variants$DP)),2)
+accepted_variants$RO <- as.numeric(accepted_variants$RO)
+accepted_variants <- accepted_variants%>% select(-c("Chromosome","Start_Position","Stop_Position","between"))
+num_snps_accepted <- accepted_variants %>% select(c(POS,REF,ALT)) %>% distinct()
+```
+
+
+```{r filter split variant positions}
+accepted_variants_filter <- accepted_variants %>% filter(DPtoRO < 0.1 & RO < 30)
+
+accepted_isolates <- accepted_variants_filter %>% select(Clone) %>% distinct()
+```
+
+
+
+```{r pid calculation after removal of split variant positions}
+accepted_variants_count <- as.data.frame(table(accepted_variants_filter$Clone))
+colnames(accepted_variants_count) <- c("clone","num_var")
+
+cov_blast_var <- merge(cov_blast_filter,accepted_variants_count, by ="clone", all.x=TRUE)
+cov_blast_var$num_var[is.na(cov_blast_var$num_var)] <- 0
+
+cov_blast_var$pid <- ((cov_blast_var$p_covbases-cov_blast_var$num_var)/cov_blast_var$p_covbases) * 100
+cov_blast_var$pid[is.na(cov_blast_var$pid)] <- 0
+
+cov_blast_var_filter <- cov_blast_var %>% filter(pid>99.5 |blast_bac43=="clust2")
+```
+
+```{r variants after cov blast filter}
+cov_filter_isolates <- cov_blast_var_filter %>% select("clone")
+colnames(cov_filter_isolates) <- "Clone"
+accepted_variants_cov_filter <- merge(accepted_variants_filter,cov_filter_isolates, by ="Clone" )
+accepted_isolates <- accepted_variants_cov_filter  %>% select(Clone) %>% distinct()
+num_snps_accepted <- accepted_variants_cov_filter  %>% select(c(POS,REF,ALT)) %>% distinct()
+
+```
+
+
+
+```{r merge accepted variant list with low cov list - 10% low cov}
+#pivot variant list so it can be merged to make a master list
+variant_pivot <- pivot_wider(accepted_variants_cov_filter, id_cols="Clone", names_from= "POS", values_from="X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.")
+
+#format and pivot low cov region file for merge
+low_cov_format <- unite(low_cov, col = "Low_cov_region", c(Start_Position, Stop_Position), sep="-") %>% select(c("Clone","Low_cov_region"))
+low_cov_filter <- merge(low_cov_format,cov_filter_isolates, by="Clone")
+low_cov_table <- low_cov_filter  %>% select(Low_cov_region) %>% table() %>% as.data.frame() #count number of unique low cov regions
+low_cov_pivot <- pivot_wider(low_cov_filter, id_cols="Clone", names_from= "Low_cov_region", values_from="Low_cov_region")
+
+variant_low_cov <- merge(variant_pivot,low_cov_pivot,by="Clone",all=TRUE)
+
+```
+
+
+
+```{r read in IS elements and merge with variants and low cov, manually remove excluded IS calls}
+#is_short <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_summary.ISFinder.txt",sep='\t',header=T) 
+is_long <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_summary.long.ISFinder.txt",sep='\t',header=T) 
+is_long1 <- is_long %>% filter(Potential_IS !="ISEfa11") %>% filter(Start_Position!=5409) %>% as.data.frame()
+is_long_filter <- is_long1 %>%
+    select(-c(Sample,Chromosome, Stop_Position, Potential_sequence)) %>%
+    filter(Potential_IS != "No identity") %>%
+    pivot_wider(names_from = Potential_IS, values_from = Start_Position) %>% select(-c("Alignment"))
+
+is_long_filter$ISEf1[is_long_filter$ISEf1 == "Invalid Number"] <- NA
+
+is_filter <- merge(is_long_filter ,cov_filter_isolates, by="Clone")
+is_filter <- as.data.frame(is_filter)
+
+#merge variants, low cov regions, IS elements
+variant_low_cov_is <- merge(is_filter,variant_low_cov, by="Clone", all=TRUE)
+variant_low_cov_is[variant_low_cov_is=="NULL"] <- NA
+```
+
+
+
+```{r include all isolates in master file even those without variants}
+
+all_variant_low_cov_is <- merge(cov_filter_isolates,variant_low_cov_is, by="Clone", all.x=TRUE )
+```
+
+
+```{r merge with blast call}
+blast <- cov_blast_var_filter %>% select(c("clone","blast_bac43"))
+colnames(blast) <- c("Clone","blast_bac43")
+blast[is.na(blast)] <- "no_blast_hit"
+
+all_variant_low_cov_is_blast <- merge(all_variant_low_cov_is,blast,by = "Clone")
+```
+
+```{r assign a unique pairid to each distinct variation combination}
+#identify variation combinations
+variant_low_cov_is_distinct <- all_variant_low_cov_is_blast %>% select(-(Clone)) %>% distinct()
+#make a unique number identifier for each combination of variations
+pairid <- seq(1, nrow(variant_low_cov_is_distinct),by=1) 
+#assign identifier to variaitons
+variant_low_cov_is_distinct$pairid <- pairid
+
+#get all column names
+variables <- variant_low_cov_is_distinct %>% select(-(pairid)) %>% colnames() 
+
+matched_variant_low_cov_is <- merge(all_variant_low_cov_is_blast,variant_low_cov_is_distinct, by=variables, all=TRUE)
+num_variations <- table(matched_variant_low_cov_is$pairid) %>% as.data.frame()
+colnames(num_variations) <- c("pairid","freq")
+matched_clone_pairid <- matched_variant_low_cov_is %>% select(c(Clone,pairid))
+
+#get example of every pairid
+pairid_example <- matched_clone_pairid %>% group_by(pairid) %>% filter(row_number()==1)
+pairid_num_ex <- merge(num_variations,pairid_example, by="pairid")
+```
+
+
+```{r edit after manual inspection}
+
+p103<- matched_variant_low_cov_is %>% filter(pairid ==103) %>% select_if(~ !any(is.na(.)))
+p103_edit <- p103 %>% select(-c("3031-3033"))
+p103_edit$"3024-3033" <- "3024-3033"
+
+p18<- matched_variant_low_cov_is %>% filter(pairid ==18) %>% select_if(~ !any(is.na(.)))
+p18_edit <- p18 %>% select(-c("3032-3033"))
+p18_edit$"3024-3033" <- "3024-3033"
+
+p4<- matched_variant_low_cov_is %>% filter(pairid ==4) %>% select_if(~ !any(is.na(.)))
+p4_edit <- p4 
+p4_edit$ISEf1 <- 2103
+p4_edit$IS_no_identity <- 1960
+
+p9<- matched_variant_low_cov_is %>% filter(pairid ==9) %>% select_if(~ !any(is.na(.)))
+p9_edit <- p9 %>% select(-contains("-"))
+p9_edit$"1969-2840" <- "1969-2840"
+p9_edit$"2919-2923" <- "2919-2923"
+
+p10<- matched_variant_low_cov_is %>% filter(pairid ==10) %>% select_if(~ !any(is.na(.)))
+p10_edit <- p10 %>% select(-contains("-"))
+
+p11<- matched_variant_low_cov_is %>% filter(pairid ==11) %>% select_if(~ !any(is.na(.)))
+p11_edit <- p11 %>% select(-contains("-"))
+
+p24<- matched_variant_low_cov_is %>% filter(pairid ==24) %>% select_if(~ !any(is.na(.)))
+p24_edit <- p24 %>% select(-c("447-556","180-370","3027-3033"))
+p24_edit$"180-556" <- "180-556"
+p24_edit$"3024-3033" <- "3024-3033"
+
+p36<- matched_variant_low_cov_is %>% filter(pairid ==36) %>% select_if(~ !any(is.na(.)))
+p36_edit <- p36 %>% select(-contains("-"))
+p36_edit$"1969-2840" <- "1969-2840" 
+p36_edit$"2919-2923" <- "2919-2923"
+
+p37<- matched_variant_low_cov_is %>% filter(pairid ==37) %>% select_if(~ !any(is.na(.)))
+p37_edit <- p37 %>% select(-contains("-"))
+
+p46<- matched_variant_low_cov_is %>% filter(pairid ==46) %>% select_if(~ !any(is.na(.)))
+p46_edit <- p46 %>% select(-c("1-17","192-456","111-149"))
+p46_edit$"1-28" <- "1-28"
+p46_edit$"111-457" <- "111-457"
+
+p50<- matched_variant_low_cov_is %>% filter(pairid ==50) %>% select_if(~ !any(is.na(.)))
+p50_edit <- p50 %>% select(-c("2111-2138"))
+
+p51<- matched_variant_low_cov_is %>% filter(pairid ==51) %>% select_if(~ !any(is.na(.)))
+p51_edit <- p51 %>% select(-contains("-"))
+
+p57<- matched_variant_low_cov_is %>% filter(pairid ==57) %>% select_if(~ !any(is.na(.)))
+p57_edit <- p57 %>% select(-c("5125-5229"))
+p57_edit$"5115-5229" <- "5115-5229"
+
+p66<- matched_variant_low_cov_is %>% filter(pairid ==66) %>% select_if(~ !any(is.na(.)))
+p66_edit <- p66 %>% select(-contains("-"))
+p66_edit$"1462-1846" <- "1462-1846"
+p66_edit$"1872-1873" <- "1872-1873"
+p66_edit$"1902-1960" <- "1902-1960"
+
+p68<- matched_variant_low_cov_is %>% filter(pairid ==68) %>% select_if(~ !any(is.na(.)))
+p68_edit <- p68 %>% select(-contains("-"))
+p68_edit$"1462-1795" <- "1462-1795"
+p68_edit$"1823-1846" <- "1823-1846"
+p68_edit$"1872-1873" <- "1872-1873"
+p68_edit$"1902-1960" <- "1902-1960"
+
+p69<- matched_variant_low_cov_is %>% filter(pairid ==69) %>% select_if(~ !any(is.na(.)))
+p69_edit <- p69 %>% select(-contains("-"))
+
+p72<- matched_variant_low_cov_is %>% filter(pairid ==72) %>% select_if(~ !any(is.na(.)))
+p72_edit <- p72 %>% select(-contains("-"))
+p72_edit$"3024-3033" <- "3024-3033"
+
+p82<- matched_variant_low_cov_is %>% filter(pairid ==82) %>% select_if(~ !any(is.na(.)))
+p82_edit <- p82 %>% select(-contains("-"))
+p82_edit$"1969-2840" <- "1969-2840"
+p82_edit$"2919-2923" <- "2919-2923"
+p82_edit$"3032-5135" <- "3032-5135"
+
+p83<- matched_variant_low_cov_is %>% filter(pairid ==83) %>% select_if(~ !any(is.na(.)))
+p83_edit <- p83 %>% select(-contains("-"))
+
+p84<- matched_variant_low_cov_is %>% filter(pairid ==84) %>% select_if(~ !any(is.na(.)))
+p84_edit <- p84 %>% select(-contains("-"))
+
+p87<- matched_variant_low_cov_is %>% filter(pairid ==87) %>% select_if(~ !any(is.na(.)))
+p87_edit <- p87 %>% select(-contains("-"))
+
+p88<- matched_variant_low_cov_is %>% filter(pairid ==88) %>% select_if(~ !any(is.na(.)))
+p88_edit <- p88 %>% select(-contains("-"))
+
+p91<- matched_variant_low_cov_is %>% filter(pairid ==91) %>% select_if(~ !any(is.na(.)))
+p91_edit <- p91 %>% select(-contains("-"))
+p91_edit$"3022-3033" <- "3022-3033"
+
+p94<- matched_variant_low_cov_is %>% filter(pairid ==94) %>% select_if(~ !any(is.na(.)))
+p94_edit <- p94 %>% select(-contains("-"))
+
+p95<- matched_variant_low_cov_is %>% filter(pairid ==95) %>% select_if(~ !any(is.na(.)))
+p95_edit <- p95 %>% select(-contains("-"))
+
+p100<- matched_variant_low_cov_is %>% filter(pairid ==100) %>% select_if(~ !any(is.na(.)))
+p100_edit <- p100 %>% select(-contains("-"))
+
+p106<- matched_variant_low_cov_is %>% filter(pairid ==106) %>% select_if(~ !any(is.na(.)))
+p106_edit <- p106 %>% select(-c("3032-3033"))
+p106_edit$"3024-3033" <- "3024-3033"
+
+p121<- matched_variant_low_cov_is %>% filter(pairid ==121) %>% select_if(~ !any(is.na(.)))
+p121_edit <- p121 %>% select(-contains("-"))
+p121_edit$"111-453"<- "111-453"
+p121_edit$"532-568" <- "532-568"
+p121_edit$"738-1308" <- "738-1308"
+p121_edit$"1446-1960" <- "1446-1960"
+
+p122<- matched_variant_low_cov_is %>% filter(pairid ==122) %>% select_if(~ !any(is.na(.)))
+p122_edit <- p122 %>% select(-contains("-"))
+
+p125<- matched_variant_low_cov_is %>% filter(pairid ==125) %>% select_if(~ !any(is.na(.)))
+p125_edit <- p125 %>% select(-contains("-"))
+p125_edit$"4758-4793" <- "4758-4793"
+p125_edit$"4634-4639" <- "4634-4639"
+p125_edit$"3024-3033" <- "3024-3033"
+
+p126<- matched_variant_low_cov_is %>% filter(pairid ==126) %>% select_if(~ !any(is.na(.)))
+p126_edit <- p126 %>% select(-contains("-"))
+
+p127<- matched_variant_low_cov_is %>% filter(pairid ==127) %>% select_if(~ !any(is.na(.)))
+p127_edit <- p127 %>% select(-contains("-"))
+
+
+edited_pairids_list <- list(p103_edit,p18_edit,p4_edit,p9_edit,p10_edit,
+                            p11_edit,p24_edit,p36_edit,p37_edit,p46_edit,
+                            p50_edit,p51_edit,p57_edit,p66_edit,p68_edit,
+                            p69_edit ,p72_edit,p82_edit,p83_edit,p84_edit,
+                            p87_edit,p88_edit,p91_edit,p94_edit,p95_edit ,
+                            p100_edit,p106_edit,p121_edit,p122_edit,p125_edit,
+                            p126_edit,p127_edit)
+
+#merge the new edited pairid variations together
+edited_pairids <- Reduce(function(x, y) merge(x, y, all=TRUE), edited_pairids_list)
+edited_pairids1 <- edited_pairids %>% select(-c("pairid"))
+
+#edit the master variant file to remove the old pairid variants
+matched_variant_low_cov_is1 <- matched_variant_low_cov_is %>% filter(!(pairid==103 | pairid==18 |pairid==4 | pairid==9 | pairid== 10 |
+                                                                       pairid==11 | pairid==24 | pairid==36 | pairid==37 | pairid==46 |
+                                                                       pairid==50 | pairid==51 | pairid==57 | pairid==66 | pairid==68 | 
+                                                                       pairid==69 | pairid==72 | pairid==82 | pairid==83 | pairid==84|
+                                                                       pairid==87 | pairid==88 | pairid==91 | pairid==94 | pairid==95 |
+                                                                       pairid==100 | pairid==106 | pairid==121 | pairid==122 | pairid==125|
+                                                                       pairid==126 | pairid==127))
+
+matched_variant_low_cov_is2 <- matched_variant_low_cov_is1 %>% select(-c("pairid"))
+
+#merge the edited pairids with the master file 
+matched_variant_low_cov_is_edited <- merge(edited_pairids1,matched_variant_low_cov_is2,,all=TRUE)
+
+```
+
+
+```{r remove variants in low cov regions}
+low_cov_new <- matched_variant_low_cov_is_edited %>% select("Clone",contains("-"))
+lc <- low_cov_new %>% pivot_longer(!Clone, names_to = "low_cov", values_to = "count") 
+lc1 <- lc[!is.na(lc$count),] %>% select(c("Clone","low_cov"))
+lc_separate <- lc1 %>% separate(low_cov, c('Start_Position', 'Stop_Position'),"-")
+lc_separate$Start_Position <- as.numeric(lc_separate$Start_Position)
+lc_separate$Stop_Position <- as.numeric(lc_separate$Stop_Position)
+
+snps_lc <- merge(accepted_variants_cov_filter,lc_separate, by="Clone", all=TRUE)
+snps_lc$between <- between(snps_lc$POS,snps_lc$Start_Position,snps_lc$Stop_Position)
+snps_lc$AO <- as.integer(snps_lc$AO)
+
+snps_lc_btwn_true<- filter(snps_lc,between ==TRUE)
+
+#remove snp calls that fall in low cov regions 
+merged_snps_lc <- merge(accepted_variants_cov_filter,snps_lc_btwn_true, all.x=TRUE )
+accepted_variants <- merged_snps_lc [is.na(merged_snps_lc$between), ] #only keep snp calls where the call in not in a low cov region
+num_snps_accepted <- accepted_variants %>% select(c(POS,REF,ALT)) %>% distinct()
+
+```
+
+```{r merge variants, is, low cov}
+variant_pivot <- pivot_wider(accepted_variants, id_cols="Clone", names_from= "POS", values_from="X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.")
+
+merge1 <- merge(variant_pivot,blast, by="Clone",all=TRUE)
+merge2 <- merge(merge1,low_cov_new,by="Clone",all=TRUE)
+merge3<- merge(merge2, is_filter,by="Clone",all=TRUE)
+```
+
+
+
+```{r assign new pairid}
+
+#assign a new pairid to the edited variations
+#identify variation combinations
+matched_variant_low_cov_is_edited_distinct <- merge3 %>% select(-(Clone)) %>% distinct()
+#make a unique number identifier for each combination of variations
+pairid <- seq(1, nrow(matched_variant_low_cov_is_edited_distinct),by=1) 
+#assign identifier to variaitons
+matched_variant_low_cov_is_edited_distinct$pairid <- pairid
+
+#add pairids to each of the variations by clone 
+matched_variant_low_cov_is_final <- merge(merge3,matched_variant_low_cov_is_edited_distinct, all=TRUE)
+num_variations <- table(matched_variant_low_cov_is_final$pairid) %>% as.data.frame()
+matched_clone_pairid <- matched_variant_low_cov_is_final %>% select(c(Clone,pairid))
+```
+
+
+
+
+```{r final write for command line}
+#write.table(x, args[5], row.names=FALSE, sep="\t",quote=FALSE)
+write.table(matched_variant_low_cov_is_final, "20230503_within-host/15_bac43_variation/summary/bac43_variation_summary.csv",row.names=FALSE, sep="\t",quote=FALSE)
+```
+
+
+
+```{r format for phyloviz}
+data <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_variation_summary.csv",sep='\t')
+num_variations <- table(data$pairid) %>% as.data.frame()
+
+pairid_list <- data %>% select(-c("Clone")) %>% distinct()
+pairid_first <- pairid_list %>% select("pairid",everything())
+pairid_first[pairid_first=='NULL'] = NA
+
+write.table(pairid_first, "20230503_within-host/15_bac43_variation/summary/bac43_variation_pairids.csv",row.names=FALSE, sep="\t",quote=FALSE)
+
+p<- data %>% filter(pairid==67|pairid==59) %>%  remove_empty(which = "cols")
+
+clusterB<- data %>% filter(pairid==5|pairid==21|pairid==44|pairid==40|pairid==53|pairid==77|pairid==1|pairid==28|pairid==29) %>%  remove_empty(which = "cols")
+clusterC<- data %>% filter(pairid==2|pairid==12|pairid==98|pairid==91|pairid==69|pairid==37|pairid==30|pairid==61|pairid==47|pairid==95|pairid==76|pairid==46|pairid==56|pairid==31|pairid==26|pairid==9|pairid==73) %>%  remove_empty(which = "cols")
+
+clusterA<- data %>% filter(pairid==14|pairid==106|pairid==55|pairid==11|pairid==68|pairid==107|pairid==57|pairid==15|pairid==6|pairid==48|pairid==70|pairid==49|pairid==71|pairid==18|pairid==33|pairid==20|pairid==101) %>%  remove_empty(which = "cols")
+
+mlst <- read.csv("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/first_efm_pr_bl_mlst_dateQ.csv",sep='\t')
+colnames(mlst) <- c("X","Clone","PID","cdate","ST","quarter")
+clone_pairid_list <- data %>% select(c("Clone","pairid"))
+
+clone_mlst_pairid <- merge(clone_pairid_list,mlst, by= "Clone")
+clone_mlst_pairid1 <- clone_mlst_pairid %>% select(-c("X","cdate"))
+write.table(clone_mlst_pairid1, "20230503_within-host/15_bac43_variation/summary/bac43_variation_clone_pairids.csv",row.names=FALSE, sep="\t",quote=FALSE)
+
+```
+
+
+
+
+
+
+
+
+```{r count snps identified in gene regions}
+num_snps_accepted$repA <- between(num_snps_accepted$POS,1,945)
+repA <- num_snps_accepted %>% filter(repA==TRUE)
+num_snps_accepted$repB <- between(num_snps_accepted$POS, 966,1499)
+repB <- num_snps_accepted %>% filter(repB==TRUE)
+num_snps_accepted$bacA<- between(num_snps_accepted$POS, 2139,2363)
+bacAB <- num_snps_accepted %>% filter(bacA==TRUE | bacB==TRUE)
+num_snps_accepted$bacB<- between(num_snps_accepted$POS, 2383,2670)
+bacB <- num_snps_accepted %>% filter(bacB==TRUE)
+num_snps_accepted$mobC<- between(num_snps_accepted$POS, 3120,3500)
+mobC <- num_snps_accepted %>% filter(mobC==TRUE)
+num_snps_accepted$mobA<- between(num_snps_accepted$POS, 3482,4396)
+mobA <- num_snps_accepted %>% filter(mobA==TRUE)
+
+```
+
+

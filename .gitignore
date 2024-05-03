@@ -1,0 +1,9 @@
+0*/*
+1*/*
+logs/*
+slurm_logs/*
+.snakemake/*
+slurm*
+*.sif
+samtools*
+snpEff*

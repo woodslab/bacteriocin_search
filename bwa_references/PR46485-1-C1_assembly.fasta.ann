@@ -1,0 +1,17 @@
+3204661 8 11
+0 1 length=2459753 depth=1.00x
+0 2459753 0
+0 2 length=382980 depth=0.96x
+2459753 382980 0
+0 3 length=210898 depth=0.49x circular=true
+2842733 210898 0
+0 4 length=93123 depth=0.47x
+3053631 93123 0
+0 5 length=27458 depth=0.55x circular=true
+3146754 27458 0
+0 6 length=21077 depth=2.79x circular=true
+3174212 21077 0
+0 7 length=6173 depth=4.74x circular=true
+3195289 6173 0
+0 8 length=3199 depth=9.51x circular=true
+3201462 3199 0

@@ -1,0 +1,7 @@
+name: igv-report
+channels:
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - igv-reports=1.0.3
