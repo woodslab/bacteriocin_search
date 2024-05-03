@@ -447,6 +447,16 @@ write.table(pairid_first, "20230503_within-host/15_bac43_variation/summary/bac43
 
 p<- data %>% filter(pairid==67|pairid==59) %>%  remove_empty(which = "cols")
 
+
+#identify isolates where the only variant is an IS element)
+is_only <- pairid_first %>% select(contains("I")) 
+is_present <- is_only %>% filter(!if_all(ISEf1:ISEfm1, is.na)) #isolate pairIDs that have ISE (i.e. do not have NA for every row)
+all_is_present <- merge(is_present,pairid_first,all.x=TRUE)
+is_and_variant <- all_is_present %>% select(-c(blast_bac43)) %>% filter(!if_all(X1958:X2362.2468, is.na)) #find isolates that have a ISE and another variant
+is_only <- anti_join(all_is_present,is_and_variant)
+
+
+
 clusterB<- data %>% filter(pairid==5|pairid==21|pairid==44|pairid==40|pairid==53|pairid==77|pairid==1|pairid==28|pairid==29) %>%  remove_empty(which = "cols")
 clusterC<- data %>% filter(pairid==2|pairid==12|pairid==98|pairid==91|pairid==69|pairid==37|pairid==30|pairid==61|pairid==47|pairid==95|pairid==76|pairid==46|pairid==56|pairid==31|pairid==26|pairid==9|pairid==73) %>%  remove_empty(which = "cols")
 
