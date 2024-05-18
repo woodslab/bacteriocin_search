@@ -60,7 +60,7 @@ low_cov_isolates <- merge(isolates,low_cov, by="Clone")
 
 
 ```{r annotated snps}
-snps <- read.csv("20230503_within-host/17_snpeff/bac43/summary/bac43_annotated_summary.csv", sep=';', header=T,row.names=NULL) 
+snps <- read.csv("17_snpeff/bac43/summary/bac43_annotated_summary.csv", sep=';', header=T,row.names=NULL) 
 colnames(snps) <- colnames(snps)[2:ncol(snps)]
 snps <- snps[1:(ncol(snps)-1)]
 samples <- snps %>% select(-c(CHROM,POS,ID,REF,ALT,QUAL,FILTER,FORMAT,X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.)) %>% colnames()
@@ -436,7 +436,7 @@ write.table(matched_variant_low_cov_is_final, "20230503_within-host/15_bac43_var
 
 
 ```{r format for phyloviz}
-data <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_variation_summary.csv",sep='\t')
+data <- read.csv("15_bac43_variation/summary/bac43_variation_summary.csv",sep='\t')
 num_variations <- table(data$pairid) %>% as.data.frame()
 
 pairid_list <- data %>% select(-c("Clone")) %>% distinct()
@@ -445,8 +445,9 @@ pairid_first[pairid_first=='NULL'] = NA
 
 write.table(pairid_first, "20230503_within-host/15_bac43_variation/summary/bac43_variation_pairids.csv",row.names=FALSE, sep="\t",quote=FALSE)
 
-p<- data %>% filter(pairid==67|pairid==59) %>%  remove_empty(which = "cols")
-
+p<- data %>% filter(pairid==77|pairid==1|pairid==28|pairid==29) %>%  remove_empty(which = "cols")
+p<- pairid_first %>% filter(pairid==88|pairid==75) %>%  remove_empty(which = "cols")
+ 
 
 #identify isolates where the only variant is an IS element)
 is_only <- pairid_first %>% select(contains("I")) 
@@ -457,10 +458,17 @@ is_only <- anti_join(all_is_present,is_and_variant)
 
 
 
+
+clusterA1<- pairid_first %>% filter(pairid==42|pairid==67|pairid==96|pairid==24|pairid==60) %>% remove_empty(which = "cols")
+clusterA2<- pairid_first %>% filter(pairid==93|pairid==85|pairid==66|pairid==99|pairid==72) %>% remove_empty(which = "cols")
+clusterA3<- pairid_first %>% filter(pairid==23|pairid==51|pairid==92|pairid==64|pairid==65) %>% remove_empty(which = "cols")
+clusterA4<- pairid_first %>% filter(pairid==52|pairid==25|pairid==27) %>% remove_empty(which = "cols")
+
+
 clusterB<- data %>% filter(pairid==5|pairid==21|pairid==44|pairid==40|pairid==53|pairid==77|pairid==1|pairid==28|pairid==29) %>%  remove_empty(which = "cols")
 clusterC<- data %>% filter(pairid==2|pairid==12|pairid==98|pairid==91|pairid==69|pairid==37|pairid==30|pairid==61|pairid==47|pairid==95|pairid==76|pairid==46|pairid==56|pairid==31|pairid==26|pairid==9|pairid==73) %>%  remove_empty(which = "cols")
+clusterD<- data %>% filter(pairid==63|pairid==34|pairid==7|pairid==22|pairid==103|pairid==32|pairid==50|pairid==41|pairid==108|pairid==16|pairid==90|pairid==17|pairid==79) %>%  remove_empty(which = "cols")
 
-clusterA<- data %>% filter(pairid==14|pairid==106|pairid==55|pairid==11|pairid==68|pairid==107|pairid==57|pairid==15|pairid==6|pairid==48|pairid==70|pairid==49|pairid==71|pairid==18|pairid==33|pairid==20|pairid==101) %>%  remove_empty(which = "cols")
 
 mlst <- read.csv("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/first_efm_pr_bl_mlst_dateQ.csv",sep='\t')
 colnames(mlst) <- c("X","Clone","PID","cdate","ST","quarter")
@@ -472,6 +480,14 @@ write.table(clone_mlst_pairid1, "20230503_within-host/15_bac43_variation/summary
 
 ```
 
+
+```{r choose isolates for phenotypic testing}
+#pick one pairid of every mlst
+clone_mlst_pairid2 <- clone_mlst_pairid1 %>% select("Clone","pairid","ST") %>% group_by(pairid,ST)
+clone_mlst <- clone_mlst_pairid2 %>% arrange(ST) %>% filter(row_number()==1) %>% arrange(pairid)
+write.table(clone_mlst, "20230503_within-host/15_bac43_variation/summary/bac43_phenotypic_assay.csv",row.names=FALSE, sep=",",quote=FALSE)
+
+```
 
 
 

@@ -12,7 +12,7 @@ library(janitor)
 ```
 
 ```{r format snp csv}
-snps <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_summary.csv", sep=';', header=T,row.names=NULL) 
+snps <- read.csv("14_enterocinA_variation/summary/enterocinA_summary.csv", sep=';', header=T,row.names=NULL) 
 colnames(snps) <- colnames(snps)[2:ncol(snps)]
 snps <- snps[1:(ncol(snps)-1)]
 samples <- snps %>% select(-c(CHROM,POS,ID,REF,ALT,QUAL,FILTER,FORMAT)) %>% colnames()
@@ -37,20 +37,28 @@ snps_filter1 <- snps_filter %>% select(-c(CHROM,ID,FILTER,FORMAT,QUAL)) #remove 
 
 snps_filter1$AO <- as.integer(snps_filter1$AO)
 
+#filter positions to 246177 - 256268
+snps_filter2 <- snps_filter1
+snps_filter2$between <- between(snps_filter2$POS,246177,256268)
+snps_filter2<- filter(snps_filter2,between ==TRUE) %>% select(-c("between"))
+
 ```
 
 ```{r get snp annotations}
-ann_snps <- read.csv("20230503_within-host/17_snpeff/enterocinA/summary/enterocinA_annotated_summary.csv", sep=';', header=T,row.names=NULL) 
+ann_snps <- read.csv("17_snpeff/enterocinA/summary/enterocinA_annotated_summary.csv", sep=';', header=T,row.names=NULL) 
 colnames(ann_snps) <- colnames(ann_snps)[2:ncol(ann_snps)]
 ann_snps <- ann_snps[1:(ncol(ann_snps)-1)]
 
 ann_snps <- ann_snps %>% select(POS,REF,ALT,X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.)
 
+#filter positions to 246177 - 256268
+ann_snps$between <- between(ann_snps$POS,246177,256268)
+ann_snps<- filter(ann_snps,between ==TRUE) %>% select(-c("between"))
 ```
 
 
 ```{r format low cov regions-10% enterocin A region only}
-low_covA10 <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals_enterocinA10.txt",sep='\t',header=T) 
+low_covA10 <- read.csv("14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals_enterocinA10.txt",sep='\t',header=T) 
 low_cov_filtA10 <- low_covA10 %>% select(-c(Chromosome))
 low_cov_format10 <- unite(low_cov_filtA10, col = "Low_cov_region", c(Start_Position, Stop_Position), sep="-")
 low_cov_table10 <- low_cov_format10  %>% select(Low_cov_region) %>% table() %>% as.data.frame() 
@@ -107,27 +115,49 @@ while (z < nrow(low_cov_filtA10_order3)){
 low_cov_filtA10_order4 <- anti_join(low_cov_filtA10_order3, dataframe_rows_to_remove, by = c("Clone","Start_Position","Stop_Position"))
 
 
+#filter positions to 246177 - 256268
+low_cov_filtA10_order5 <- low_cov_filtA10_order4
+low_cov_filtA10_order5$st_btwn_st <- between(low_cov_filtA10_order5$Start_Position, 245800,246177)
+low_cov_filtA10_order5$end_btwn_st <- between(low_cov_filtA10_order5$Stop_Position, 245800,246177)
+low_cov_filtA10_order5$st_btwn_end<- between(low_cov_filtA10_order5$Start_Position, 256268,256750)
+low_cov_filtA10_order5$end_btwn_end<- between(low_cov_filtA10_order5$Stop_Position, 256268,256750)
 
 
-colnames(low_cov_filtA10_order4) <- c("Clone","Low_cov_start_pos","Low_cov_end_pos")
+low_cov_1 <- low_cov_filtA10_order5 
+#if end_btwn_end==T --> set low cov end position to 256268
+low_cov_1$Stop_Position[low_cov_1$end_btwn_end==TRUE & low_cov_1$st_btwn_st==FALSE & low_cov_1$end_btwn_st==FALSE & low_cov_1$st_btwn_end==FALSE] <- 256268
 
-low_cov_format10 <- unite(low_cov_filtA10_order4, col = "Low_cov_region", c(Low_cov_start_pos, Low_cov_end_pos), sep="-")
+#if st_btwn_st ==T --> set low cov start position to 246177
+low_cov_1$Start_Position[low_cov_1$end_btwn_end==FALSE & low_cov_1$st_btwn_st==TRUE & low_cov_1$end_btwn_st==FALSE & low_cov_1$st_btwn_end==FALSE] <- 246177
+
+#if st_btwn_st and end_btwn_end ==T --> low cov region = 246177 - 256268 (isolate will be removed from consideration)
+low_cov_1$Start_Position[low_cov_1$end_btwn_end==TRUE & low_cov_1$st_btwn_st==TRUE & low_cov_1$end_btwn_st==FALSE & low_cov_1$st_btwn_end==FALSE] <- 246177
+low_cov_1$Stop_Position[low_cov_1$end_btwn_end==TRUE & low_cov_1$st_btwn_st==TRUE & low_cov_1$end_btwn_st==FALSE & low_cov_1$st_btwn_end==FALSE] <- 256268
+
+#if st_btwn_end and end_btwn_end ==T --> remove low cov region
+#if st_btwn_st and end_btwn_st ==T --> remove low cov region
+low_cov_2 <- low_cov_1 %>% filter(!(st_btwn_end==TRUE & end_btwn_end==TRUE))
+low_cov_3 <- low_cov_2 %>% filter(!(st_btwn_st==TRUE & end_btwn_st==TRUE))
+
+low_cov_3 <- low_cov_3 %>% select(c(Clone,Start_Position,Stop_Position))
+colnames(low_cov_3) <- c("Clone","Low_cov_start_pos","Low_cov_end_pos")
+
+low_cov_format10 <- unite(low_cov_3, col = "Low_cov_region", c(Low_cov_start_pos, Low_cov_end_pos), sep="-")
 low_cov_table10 <- low_cov_format10  %>% select(Low_cov_region) %>% table() %>% as.data.frame() 
 
 ```
 
 
 
-
 ```{r remove snps that fall in low cov regions - 10% low cov}
-snps_lcA10 <- merge(snps_filter1,low_cov_filtA10_order4, by="Clone", all=TRUE)
+snps_lcA10 <- merge(snps_filter2,low_cov_3, by="Clone", all=TRUE)
 snps_lcA10$between <- between(snps_lcA10$POS,snps_lcA10$Low_cov_start_pos,snps_lcA10$Low_cov_end_pos)
 snps_lcA10$AO <- as.integer(snps_lcA10$AO)
 
 snps_lc_btwn_trueA10<- filter(snps_lcA10,between ==TRUE)
 
 #remove snp calls that fall in low cov regions 
-merged_snps_lc <- merge(snps_filter1,snps_lc_btwn_trueA10, by=c("POS","Clone","REF","ALT","DP","RO","AO","QA"), all.x=TRUE )
+merged_snps_lc <- merge(snps_filter2,snps_lc_btwn_trueA10, by=c("POS","Clone","REF","ALT","DP","RO","AO","QA"), all.x=TRUE )
 accepted_variants <- merged_snps_lc [is.na(merged_snps_lc $between), ] #only keep snp calls where the call in not in a low cov region
 num_snps <- accepted_variants %>% select(c(POS,REF,ALT)) %>% distinct()
 
@@ -155,11 +185,12 @@ annotated_accepted_variants <- merge(accepted_variants_filter2, ann_snps, all.x=
 variant_pivot <- pivot_wider(annotated_accepted_variants, id_cols="Clone", names_from= "POS", values_from="X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.")
 
 #format and pivot low cov region file for merge
-low_cov_format <- unite(low_cov_filtA10_order4, col = "Low_cov_region", c(Low_cov_start_pos, Low_cov_end_pos), sep="-")
+low_cov_format <- unite(low_cov_3, col = "Low_cov_region", c(Low_cov_start_pos, Low_cov_end_pos), sep="-")
 low_cov_table <- low_cov_format  %>% select(Low_cov_region) %>% table() %>% as.data.frame() #count number of unique low cov regions
 low_cov_pivot <- pivot_wider(low_cov_format, id_cols="Clone", names_from= "Low_cov_region", values_from="Low_cov_region")
 
 variant_low_cov <- merge(variant_pivot,low_cov_pivot,by="Clone",all=TRUE)
+
 
 ```
 
@@ -167,14 +198,93 @@ variant_low_cov <- merge(variant_pivot,low_cov_pivot,by="Clone",all=TRUE)
 
 
 ```{r read in IS elements and merge with variants and low cov}
-is_short <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt",sep='\t',header=T) 
-#is_long <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",sep='\t',header=T) 
+#is_short <- read.csv("14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt",sep='\t',header=T) 
+is_long <- read.csv("14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",sep='\t',header=T) 
+
+#filter positions to 246177 - 256268
+is_long$between <- between(is_long$Start_Position,246177,256268)
+is_long<- filter(is_long,between ==TRUE) %>% select(-c("between"))
+
+is_short <- is_long %>%
+    select(-c(Sample,Chromosome, Stop_Position, Potential_sequence, Alignment)) %>%
+    filter(Potential_IS != "No identity") %>%
+    pivot_wider(names_from = Potential_IS, values_from = Start_Position, values_fn = list)
+
+#separate split IS values
+is_short$IS1678 <- as.character(is_short$IS1678)
+is_short$ISLgar5 <- as.character(is_short$ISLgar5)
+
+islgar_1 <- is_short %>% filter(ISLgar5 == "c(246648, 248570)" )
+islgar_1_split <- as.data.frame(str_extract(string = islgar_1$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
+islgar_1_values <- as.data.frame(unlist(strsplit(islgar_1_split[1,1],','))) %>% t()
+rownames(islgar_1_values) <- NULL
+colnames(islgar_1_values) <- c("ISLgar5","ISLgar5_2")
+islgar_1_edit <- islgar_1 %>% select(-c("ISLgar5"))
+islgar_1_edit1 <- cbind(islgar_1_edit,islgar_1_values)
+
+islgar_2 <- is_short %>% filter(ISLgar5 == "c(246293, 246648)" )
+islgar_2_split <- as.data.frame(str_extract(string = islgar_2$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
+islgar_2_values <- as.data.frame(unlist(strsplit(islgar_2_split[1,1],','))) %>% t()
+rownames(islgar_2_values) <- NULL
+colnames(islgar_2_values) <- c("ISLgar5_2","ISLgar5")
+islgar_2_edit <- islgar_2 %>% select(-c("ISLgar5"))
+islgar_2_edit1 <- cbind(islgar_2_edit,islgar_2_values)
+
+islgar_3 <- is_short %>% filter(ISLgar5 == "c(246211, 246648)" )
+islgar_3_split <- as.data.frame(str_extract(string = islgar_3$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
+islgar_3_values <- as.data.frame(unlist(strsplit(islgar_3_split[1,1],','))) %>% t()
+rownames(islgar_3_values) <- NULL
+colnames(islgar_3_values) <- c("ISLgar5_2","ISLgar5")
+islgar_3_edit <- islgar_3 %>% select(-c("ISLgar5"))
+islgar_3_edit1 <- cbind(islgar_3_edit,islgar_3_values)
+
+#
+is1678_1 <- is_short %>% filter(IS1678 == "c(248570, 250498)" )
+is1678_1_split <- as.data.frame(str_extract(string = is1678_1$IS1678,pattern = "(?<=\\().*(?=\\))") )
+is1678_1_values <- as.data.frame(unlist(strsplit(is1678_1_split[1,1],','))) %>% t()
+rownames(is1678_1_values) <- NULL
+colnames(is1678_1_values) <- c("IS1678","IS1678_2")
+is1678_1_edit <- is1678_1 %>% select(-c("IS1678"))
+is1678_1_edit1 <- cbind(is1678_1_edit,is1678_1_values)
+
+is1678_2 <- is_short %>% filter(IS1678 == "c(248036, 248570)" )
+is1678_2_split <- as.data.frame(str_extract(string = is1678_2$IS1678,pattern = "(?<=\\().*(?=\\))") )
+is1678_2_values <- as.data.frame(unlist(strsplit(is1678_2_split[1,1],','))) %>% t()
+rownames(is1678_2_values) <- NULL
+colnames(is1678_2_values) <- c("IS1678_2","IS1678")
+is1678_2_edit <- is1678_2 %>% select(-c("IS1678"))
+is1678_2_edit1 <- cbind(is1678_2_edit,is1678_2_values)
+
+is1678_3 <- is_short %>% filter(IS1678 == "c(246241, 248570)" )
+is1678_3_split <- as.data.frame(str_extract(string = is1678_3$IS1678,pattern = "(?<=\\().*(?=\\))") )
+is1678_3_values <- as.data.frame(unlist(strsplit(is1678_3_split[1,1],','))) %>% t()
+rownames(is1678_3_values) <- NULL
+colnames(is1678_3_values) <- c("IS1678_2","IS1678")
+is1678_3_edit <- is1678_3 %>% select(-c("IS1678"))
+is1678_3_edit1 <- cbind(is1678_3_edit,is1678_3_values)
+
+new_is1678 <- rbind(is1678_1_edit1,is1678_2_edit1,is1678_3_edit1)
+new_islgar <- rbind(islgar_1_edit1,islgar_2_edit1,islgar_3_edit1)
+
+no_is1678 <- anti_join(is_short,new_is1678,by="Clone")
+no_either <- anti_join(no_is1678,new_islgar,by="Clone")
+
+
+is_short2 <- merge(no_either,new_is1678, all=TRUE)
+is_short3 <- merge(is_short2,new_islgar, all=TRUE)
+is_short3[is_short3=='NULL'] = NA
+
+
+is_short3 <- is_short3 %>% mutate(across(everything(),as.character))
+
+
 #merge variants, low cov regions, IS elements
-variant_low_cov_is <- merge(is_short,variant_low_cov, by="Clone", all=TRUE)
+variant_low_cov_is <- merge(is_short3,variant_low_cov, by="Clone", all=TRUE)
 variant_low_cov_is[variant_low_cov_is=="NULL"] <- NA
 
 
 ```
+
 
 
 ```{r assign a unique pairid to each distinct variation combination}
@@ -195,220 +305,195 @@ matched_clone_pairid <- matched_variant_low_cov_is %>% select(c(Clone,pairid))
 ```
 
 
-
-
+ 
 ```{r edit after manual inspection of variations}
 
-p9<- matched_variant_low_cov_is %>% filter(pairid ==9) %>% select_if(~ !any(is.na(.)))
-p9_edit <- p9 %>% select(-c("247121-256578"))
-p9_edit$"247121-256585" <- "247121-256585"
+p99<- matched_variant_low_cov_is %>% filter(pairid ==99) %>% select_if(~ !any(is.na(.)))
+p99_edit <- p99 %>% select(-c("247122-256268"))
+p99_edit$"247121-256268" <- "247121-256268"
 
-p5<- matched_variant_low_cov_is %>% filter(pairid ==5) %>% select_if(~ !any(is.na(.)))
-p5_edit <- p5 %>% select(-c("247121-256584"))
-p5_edit$"247121-256585" <- "247121-256585"
-
-p112<- matched_variant_low_cov_is %>% filter(pairid ==112) %>% select_if(~ !any(is.na(.)))
-p112_edit <- p112 %>% select(-c("247122-256585"))
-p112_edit$"247121-256585" <- "247121-256585"
-
-p131<- matched_variant_low_cov_is %>% filter(pairid ==131) %>% select_if(~ !any(is.na(.)))
-p131_edit <- p131
-p131_edit$"256197-256198" <- "256197-256198"
+p117<- matched_variant_low_cov_is %>% filter(pairid ==117) %>% select_if(~ !any(is.na(.)))
+p117_edit <- p117
+p117_edit$"256197-256198" <- "256197-256198"
 
 p2<- matched_variant_low_cov_is %>% filter(pairid ==2) %>% select_if(~ !any(is.na(.)))
 p2_edit <- p2 %>% select(-c("247887-247894","256197-256198","251950","256196"))
-p2_edit$"247121-256585" <- "247121-256585"
+p2_edit$"247121-256268" <- "247121-256268"
 
-p11<- matched_variant_low_cov_is %>% filter(pairid ==11) %>% select_if(~ !any(is.na(.)))
-p11_edit <- p11 %>% select(-c("246130-252236","252255-256647"))
-p11_edit$"246130-256647" <- "246130-256647"
-
-p18<- matched_variant_low_cov_is %>% filter(pairid ==18) %>% select_if(~ !any(is.na(.)))
-p18_edit <- p18 %>% select(-c("246130-252236","252255-256647"))
-p18_edit$"246130-256647" <- "246130-256647"
 
 p3<- matched_variant_low_cov_is %>% filter(pairid ==3) %>% select_if(~ !any(is.na(.)))
 p3_edit <- p3 %>% select(-contains("-"))
-p3_edit$"247121-256585" <- "247121-256585"
+p3_edit$"247121-256268" <- "247121-256268"
+
+p16<- matched_variant_low_cov_is %>% filter(pairid ==16) %>% select_if(~ !any(is.na(.)))
+p16_edit <- p16 %>% select(-c("247121-247877","247886-256268"))
+p16_edit$"247121-256268" <- "247121-256268"
+
+
+p17<- matched_variant_low_cov_is %>% filter(pairid ==17) %>% select_if(~ !any(is.na(.)))
+p17_edit <- p17 %>% select(-contains("-"))
+p17_edit$"247121-256268" <- "247121-256268"
 
 p19<- matched_variant_low_cov_is %>% filter(pairid ==19) %>% select_if(~ !any(is.na(.)))
-p19_edit <- p19 %>% select(-c("247121-247877","247886-256585"))
-p19_edit$"247121-256585" <- "247121-256585"
+p19_edit <- p19 %>% select(-contains("-"))
+p19_edit$"247121-256268" <- "247121-256268"
 
-p20<- matched_variant_low_cov_is %>% filter(pairid ==20) %>% select_if(~ !any(is.na(.)))
-p20_edit <- p20 %>% select(-contains("-"))
-p20_edit$"247121-256585" <- "247121-256585"
+p23<- matched_variant_low_cov_is %>% filter(pairid ==23) %>% select_if(~ !any(is.na(.)))
+p23_edit <- p23 %>% select(-contains("-"))
+p23_edit$"247121-256268" <- "247121-256268"
 
-p22<- matched_variant_low_cov_is %>% filter(pairid ==22) %>% select_if(~ !any(is.na(.)))
-p22_edit <- p22 %>% select(-contains("-"))
-p22_edit$"247121-256585" <- "247121-256585"
+p27<- matched_variant_low_cov_is %>% filter(pairid ==27) %>% select_if(~ !any(is.na(.)))
+p27_edit <- p27 %>% select(-contains("-"))
+p27_edit$"246177-256268" <- "246177-256268"
 
-p26<- matched_variant_low_cov_is %>% filter(pairid ==26) %>% select_if(~ !any(is.na(.)))
-p26_edit <- p26 %>% select(-contains("-"))
-p26_edit$"247121-256585" <- "247121-256585"
+p28<- matched_variant_low_cov_is %>% filter(pairid ==28) %>% select_if(~ !any(is.na(.)))
+p28_edit <- p28 %>% select(-c("249774-249797","249798-249803"))
 
 p30<- matched_variant_low_cov_is %>% filter(pairid ==30) %>% select_if(~ !any(is.na(.)))
 p30_edit <- p30 %>% select(-contains("-"))
-p30_edit$"246130-256647" <- "246130-256647"
-
-p31<- matched_variant_low_cov_is %>% filter(pairid ==31) %>% select_if(~ !any(is.na(.)))
-p31_edit <- p31 %>% select(-c("249774-249797","249798-249803"))
+p30_edit$"247121-256268" <- "247121-256268"
 
 p33<- matched_variant_low_cov_is %>% filter(pairid ==33) %>% select_if(~ !any(is.na(.)))
 p33_edit <- p33 %>% select(-contains("-"))
-p33_edit$"247121-256585" <- "247121-256585"
+p33_edit$"247121-256268" <- "247121-256268"
+
+p34<- matched_variant_low_cov_is %>% filter(pairid ==34) %>% select_if(~ !any(is.na(.)))
+p34_edit <- p34 %>% select(-contains("-"))
+p34_edit$"246177-256268" <- "246177-256268"
 
 p36<- matched_variant_low_cov_is %>% filter(pairid ==36) %>% select_if(~ !any(is.na(.)))
 p36_edit <- p36 %>% select(-contains("-"))
-p36_edit$"247121-256585" <- "247121-256585"
+p36_edit$"246177-256268" <- "246177-256268"
 
 p37<- matched_variant_low_cov_is %>% filter(pairid ==37) %>% select_if(~ !any(is.na(.)))
 p37_edit <- p37 %>% select(-contains("-"))
-p37_edit$"246130-256647" <- "246130-256647"
+p37_edit$"247121-256268" <- "247121-256268"
+
+
+p38<- matched_variant_low_cov_is %>% filter(pairid ==38) %>% select_if(~ !any(is.na(.)))
+p38_edit <- p38 %>% select(-contains("-")) %>% select(-c("250694"))
+p38_edit$"246177-256268" <- "246177-256268"
 
 p40<- matched_variant_low_cov_is %>% filter(pairid ==40) %>% select_if(~ !any(is.na(.)))
 p40_edit <- p40 %>% select(-contains("-"))
-p40_edit$"246130-256647" <- "246130-256647"
+p40_edit$"246177-256268" <- "246177-256268"
 
-p41<- matched_variant_low_cov_is %>% filter(pairid ==41) %>% select_if(~ !any(is.na(.)))
-p41_edit <- p41 %>% select(-contains("-"))
-p41_edit$"247121-256585" <- "247121-256585"
-
-p42<- matched_variant_low_cov_is %>% filter(pairid ==42) %>% select_if(~ !any(is.na(.)))
-p42_edit <- p42 %>% select(-contains("-")) %>% select(-c("250694"))
-p42_edit$"246130-256647" <- "246130-256647"
+p43<- matched_variant_low_cov_is %>% filter(pairid ==43) %>% select_if(~ !any(is.na(.)))
+p43_edit <- p43 %>% select(-contains("-"))
+p43_edit$"247121-256268" <- "247121-256268"
 
 p44<- matched_variant_low_cov_is %>% filter(pairid ==44) %>% select_if(~ !any(is.na(.)))
 p44_edit <- p44 %>% select(-contains("-"))
-p44_edit$"246130-256647" <- "246130-256647"
+p44_edit$"247121-256268" <- "247121-256268"
+
+p45<- matched_variant_low_cov_is %>% filter(pairid ==45) %>% select_if(~ !any(is.na(.)))
+p45_edit <- p45 %>% select(-contains("-"))
+p45_edit$"247121-256268" <- "247121-256268"
+
+p46<- matched_variant_low_cov_is %>% filter(pairid ==46) %>% select_if(~ !any(is.na(.)))
+p46_edit <- p46 %>% select(-contains("-"))
+p46_edit$"247121-256268" <- "247121-256268"
 
 p47<- matched_variant_low_cov_is %>% filter(pairid ==47) %>% select_if(~ !any(is.na(.)))
 p47_edit <- p47 %>% select(-contains("-"))
-p47_edit$"247121-256585" <- "247121-256585"
+p47_edit$"247121-256268" <- "247121-256268"
 
-p49<- matched_variant_low_cov_is %>% filter(pairid ==49) %>% select_if(~ !any(is.na(.)))
-p49_edit <- p49 %>% select(-contains("-"))
-p49_edit$"247121-256585" <- "247121-256585"
+p63<- matched_variant_low_cov_is %>% filter(pairid ==63) %>% select_if(~ !any(is.na(.)))
+p63_edit <- p63 %>% select(-contains("-")) %>% select(-c("IS1678","251950","256196"))
+p63_edit$"247121-256268" <- "247121-256268"
 
-p50<- matched_variant_low_cov_is %>% filter(pairid ==50) %>% select_if(~ !any(is.na(.)))
-p50_edit <- p50 %>% select(-contains("-"))
-p50_edit$"247121-256585" <- "247121-256585"
+p39<- matched_variant_low_cov_is %>% filter(pairid ==39) %>% select_if(~ !any(is.na(.)))
+p39_edit <- p39 %>% select(-contains("-")) 
+p39_edit$"247121-256268" <- "247121-256268"
 
-p51<- matched_variant_low_cov_is %>% filter(pairid ==51) %>% select_if(~ !any(is.na(.)))
-p51_edit <- p51 %>% select(-contains("-"))
-p51_edit$"247121-256585" <- "247121-256585"
+p78<- matched_variant_low_cov_is %>% filter(pairid ==78) %>% select_if(~ !any(is.na(.)))
+p78_edit <- p78 %>% select(-c("246683-246696"))
 
-p52<- matched_variant_low_cov_is %>% filter(pairid ==52) %>% select_if(~ !any(is.na(.)))
-p52_edit <- p52 %>% select(-contains("-"))
-p52_edit$"247121-256585" <- "247121-256585"
+p79<- matched_variant_low_cov_is %>% filter(pairid ==79) %>% select_if(~ !any(is.na(.)))
+p79_edit <- p79 %>% select(-c("246702-246831"))
 
-p53<- matched_variant_low_cov_is %>% filter(pairid ==53) %>% select_if(~ !any(is.na(.)))
-p53_edit <- p53 %>% select(-contains("-"))
-p53_edit$"247121-256585" <- "247121-256585"
+p82<- matched_variant_low_cov_is %>% filter(pairid ==82) %>% select_if(~ !any(is.na(.)))
+p82_edit <- p82 %>% select(-contains("-")) %>% select(-c("246717"))
+p82_edit$"246655-248570" <- "246655-248570"
 
-p72<- matched_variant_low_cov_is %>% filter(pairid ==72) %>% select_if(~ !any(is.na(.)))
-p72_edit <- p72 %>% select(-contains("-")) %>% select(-c("IS1678","251950","256196"))
-p72_edit$"247121-256585" <- "247121-256585"
 
 p85<- matched_variant_low_cov_is %>% filter(pairid ==85) %>% select_if(~ !any(is.na(.)))
-p85_edit <- p85 %>% select(-contains("-")) 
-p85_edit$"247121-256585" <- "247121-256585"
+p85_edit <- p85 %>% select(-c("246800-246811"))
 
-p89<- matched_variant_low_cov_is %>% filter(pairid ==89) %>% select_if(~ !any(is.na(.)))
-p89_edit <- p89 %>% select(-c("246683-246696"))
-
-p90<- matched_variant_low_cov_is %>% filter(pairid ==90) %>% select_if(~ !any(is.na(.)))
-p90_edit <- p90 %>% select(-c("246702-246831"))
-
-p93<- matched_variant_low_cov_is %>% filter(pairid ==93) %>% select_if(~ !any(is.na(.)))
-p93_edit <- p93 %>% select(-contains("-")) %>% select(-c("246717"))
-p93_edit$"246655-248570" <- "246655-248570"
+p95<- matched_variant_low_cov_is %>% filter(pairid ==95) %>% select_if(~ !any(is.na(.)))
+p95_edit <- p95 %>% select(-contains("-")) 
+p95_edit$"247939-248084" <- "247939-248084"
 
 p96<- matched_variant_low_cov_is %>% filter(pairid ==96) %>% select_if(~ !any(is.na(.)))
-p96_edit <- p96 %>% select(-c("246800-246811"))
-
-p102<- matched_variant_low_cov_is %>% filter(pairid ==102) %>% select_if(~ !any(is.na(.)))
-p102_edit <- p102 %>% select(-contains("-")) 
-p102_edit$"247121-256585" <- "247121-256585"
+p96_edit <- p96 %>% select(-contains("-")) 
+p96_edit$"246453-256268" <- "246453-256268"
 
 p108<- matched_variant_low_cov_is %>% filter(pairid ==108) %>% select_if(~ !any(is.na(.)))
-p108_edit <- p108 %>% select(-contains("-")) 
-p108_edit$"247939-248084" <- "247939-248084"
+p108_edit <- p108 %>% select(-c("246398-246563"))
 
 p109<- matched_variant_low_cov_is %>% filter(pairid ==109) %>% select_if(~ !any(is.na(.)))
 p109_edit <- p109 %>% select(-contains("-")) 
-p109_edit$"246453-256585" <- "246453-256585"
+p109_edit$"246342-246372" <- "246342-246372"
+p109_edit$"246590-256268" <- "246590-256268"
+
+p110<- matched_variant_low_cov_is %>% filter(pairid ==110) %>% select_if(~ !any(is.na(.)))
+p110_edit <- p110 %>% select(-contains("-")) 
+p110_edit$"246304-256268" <- "246304-256268"
+
+p113<- matched_variant_low_cov_is %>% filter(pairid ==113) %>% select_if(~ !any(is.na(.)))
+p113_edit <- p113 %>% select(-c("246831-246836","246867-246903"))
+
+p114<- matched_variant_low_cov_is %>% filter(pairid ==114) %>% select_if(~ !any(is.na(.)))
+p114_edit <- p114 %>% select(-contains("-")) 
+p114_edit$"247121-256268" <- "247121-256268"
+
+p119<- matched_variant_low_cov_is %>% filter(pairid ==119) %>% select_if(~ !any(is.na(.)))
+p119_edit <- p119 %>% select(-c("1-246633"))
+p119_edit$"246177-246633" <- "246177-246633"
+
+
+p121<- matched_variant_low_cov_is %>% filter(pairid ==121) %>% select_if(~ !any(is.na(.)))
+p121_edit <- p121 %>% select(-c("246673-246711"))
 
 p122<- matched_variant_low_cov_is %>% filter(pairid ==122) %>% select_if(~ !any(is.na(.)))
-p122_edit <- p122 %>% select(-c("246398-246563"))
+p122_edit <- p122 %>% select(-contains("-")) 
+p122_edit$"246484-256268" <- "246484-256268"
 
 p123<- matched_variant_low_cov_is %>% filter(pairid ==123) %>% select_if(~ !any(is.na(.)))
-p123_edit <- p123 %>% select(-contains("-")) 
-p123_edit$"246342-246372" <- "246342-246372"
-p123_edit$"246590-256585" <- "246590-256585"
-
-p124<- matched_variant_low_cov_is %>% filter(pairid ==124) %>% select_if(~ !any(is.na(.)))
-p124_edit <- p124 %>% select(-contains("-")) 
-p124_edit$"246304-256585" <- "246304-256585"
-
-p127<- matched_variant_low_cov_is %>% filter(pairid ==127) %>% select_if(~ !any(is.na(.)))
-p127_edit <- p127 %>% select(-c("246831-246836","246867-246903"))
-
-p128<- matched_variant_low_cov_is %>% filter(pairid ==128) %>% select_if(~ !any(is.na(.)))
-p128_edit <- p128 %>% select(-contains("-")) 
-p128_edit$"247121-256585" <- "247121-256585"
-
-p133<- matched_variant_low_cov_is %>% filter(pairid ==133) %>% select_if(~ !any(is.na(.)))
-p133_edit <- p133 %>% select(-c("1-246633"))
-p133_edit$"245800-246633" <- "245800-246633"
-
-p135<- matched_variant_low_cov_is %>% filter(pairid ==135) %>% select_if(~ !any(is.na(.)))
-p135_edit <- p135 %>% select(-c("246673-246711"))
-
-p136<- matched_variant_low_cov_is %>% filter(pairid ==136) %>% select_if(~ !any(is.na(.)))
-p136_edit <- p136 %>% select(-contains("-")) 
-p136_edit$"246484-256585" <- "246484-256585"
-
-p137<- matched_variant_low_cov_is %>% filter(pairid ==137) %>% select_if(~ !any(is.na(.)))
-p137_edit <- p137 %>% select(-c("246692-246773"))
+p123_edit <- p123 %>% select(-c("246692-246773"))
 
 
-
-edited_pairids_list <- list(p9_edit,p5_edit,p112_edit,p131_edit,p2_edit,p11_edit,p18_edit,
-                        p3_edit,p19_edit,p20_edit,p22_edit,p26_edit,p30_edit,p31_edit,p33_edit,
-                        p36_edit,p37_edit,p40_edit,p41_edit,p42_edit,p44_edit,p47_edit,p49_edit,
-                        p50_edit,p51_edit,p52_edit,p53_edit,p72_edit,p85_edit,p89_edit,p90_edit,
-                        p93_edit,p96_edit,p102_edit,p108_edit,p109_edit,p122_edit,p123_edit,p124_edit,
-                        p127_edit,p128_edit,p133_edit,p135_edit,p136_edit,p137_edit)
+edited_pairids_list <- list(p99_edit,p117_edit,p2_edit,p3_edit,p16_edit,
+                            p17_edit,p19_edit,p23_edit,p27_edit,p28_edit,p30_edit,p34_edit,p36_edit,
+                            p37_edit,p38_edit,p40_edit,p43_edit,p44_edit,p45_edit,p46_edit,p47_edit,
+                            p63_edit,p39_edit,p78_edit,p79_edit,p82_edit,p85_edit,p95_edit,p96_edit,
+                            p108_edit,p109_edit,p110_edit,p113_edit,p114_edit,p119_edit,p121_edit,
+                            p122_edit,p123_edit)
 
 #merge the new edited pairid variations together
 edited_pairids <- Reduce(function(x, y) merge(x, y, all=TRUE), edited_pairids_list)
 edited_pairids1 <- edited_pairids %>% select(-c("pairid"))
 
 #edit the master variant file to remove the old pairid variants
-matched_variant_low_cov_is1 <- matched_variant_low_cov_is %>% filter(!(pairid==9 | pairid==5 |
-                                                                    pairid==112 | pairid==131 |
-                                                                    pairid==2 | pairid==11 |
-                                                                    pairid==18 | pairid==3 |
-                                                                    pairid==19 | pairid==20 |
-                                                                    pairid==22 | pairid==26 |
-                                                                    pairid==30 | pairid==31 |
-                                                                    pairid==33 | pairid==36 |
-                                                                    pairid==37 | pairid==40 |
-                                                                    pairid==41 | pairid==42 |
-                                                                    pairid==44 | pairid==47 |
-                                                                    pairid==49 | pairid==50 |
-                                                                    pairid==51 | pairid==52 |
-                                                                    pairid==53 | pairid==72 |
-                                                                    pairid==85 | pairid==89 |
-                                                                    pairid==90 | pairid==93 |
-                                                                    pairid==96 | pairid==102 |
-                                                                    pairid==108 | pairid==109 |
-                                                                    pairid==122 | pairid==123 |
-                                                                    pairid==124 | pairid==127 |
-                                                                    pairid==128 | pairid==133 |
-                                                                    pairid==135 | pairid==136 |
-                                                                    pairid==137))
+matched_variant_low_cov_is1 <- matched_variant_low_cov_is %>% filter(!(pairid==99 | pairid==117 |
+                                                                    pairid==2 |  pairid==3 |
+                                                                    pairid==16 | pairid==17 |
+                                                                    pairid==19 | pairid==23 |
+                                                                    pairid==27 | pairid==28 |
+                                                                    pairid==30 | pairid==34 |
+                                                                    pairid==36 | pairid==37 |
+                                                                    pairid==38 | pairid==40 |
+                                                                    pairid==43 | pairid==44 |
+                                                                    pairid==45 | pairid==46 |
+                                                                    pairid==47 | pairid==63 |
+                                                                    pairid==39 | pairid==78 |
+                                                                    pairid==79 | pairid==82 |
+                                                                    pairid==85 | pairid==95 |
+                                                                    pairid==96 | pairid==108 |
+                                                                    pairid==109 | pairid==110 |
+                                                                    pairid==113 | pairid==114 |
+                                                                    pairid==119 | pairid==121 |
+                                                                    pairid==122 | pairid==123))
 matched_variant_low_cov_is2 <- matched_variant_low_cov_is1 %>% select(-c("pairid"))
 
 #merge the edited pairids with the master file 
@@ -443,7 +528,7 @@ num_snps_accepted <- accepted_variants %>% select(c(POS,REF,ALT)) %>% distinct()
 variant_pivot <- pivot_wider(accepted_variants, id_cols="Clone", names_from= "POS", values_from="X.Annotation.Annotation_Impact.Gene_Name.Gene_ID.Feature_Type.")
 
 merge2 <- merge(variant_pivot,low_cov_new,by="Clone",all=TRUE)
-merge3<- merge(merge2, is_short,by="Clone",all=TRUE)
+merge3<- merge(merge2, is_short3,by="Clone",all=TRUE)
 ```
 
 
@@ -463,8 +548,17 @@ matched_clone_pairid <- matched_variant_low_cov_is_final %>% select(c(Clone,pair
 
 ```
 
+```{r remove pairids with low cov across entire region}
+
+matched_variant_low_cov_is_final1 <- matched_variant_low_cov_is_final
+names(matched_variant_low_cov_is_final1)[names(matched_variant_low_cov_is_final1) == 'pairid'] <- 'pairid-246'
+p<- matched_variant_low_cov_is_final1 %>% select(contains("-")) %>% select(contains("246"))
+
+matched_variant_low_cov_is_final2 <- matched_variant_low_cov_is_final %>% filter(!(pairid==8|pairid==20|pairid==87|pairid==18|pairid==33))
+num_variations1 <- table(matched_variant_low_cov_is_final2$pairid) %>% as.data.frame()
 
 
+```
 
 
 
@@ -472,99 +566,66 @@ matched_clone_pairid <- matched_variant_low_cov_is_final %>% select(c(Clone,pair
 
 ```{r final write for command line}
 #write.table(x, args[5], row.names=FALSE, sep="\t",quote=FALSE)
-write.table(matched_variant_low_cov_is_final, "20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary.csv",row.names=FALSE, sep="\t",quote=FALSE)
+write.table(matched_variant_low_cov_is_final2, "14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
 ```
 
-```{r remove pairids that have low coverage across all gene cluster}
-data <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary.csv",sep='\t')
 
-data1 <- data %>% filter(!(pairid == 8 | pairid == 15 | pairid == 21 |pairid == 36 |pairid == 38 |pairid == 95|pairid == 19| pairid==37)) %>%  remove_empty(which = "cols")
+```{r pairid39 matches 5}
+data <- read.csv("14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",sep='\t')
 
-write.table(data1, "20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary.csv",row.names=FALSE, sep="\t",quote=FALSE)
+p39 <- data %>% filter(pairid==39) %>%  select("Clone")
+p5 <- data %>% filter(pairid==5) %>%  select(-c("Clone")) %>% distinct()
+new_39 <- cbind(p39,p5)
+
+data_filt <- data %>% filter(!(pairid==39))
+data_final <- merge(data_filt,new_39,all=TRUE)
+```
+
+```{r pairid 62 missing low cov }
+p62 <- data_final %>% filter(pairid==62)
+p62$X256197.256198 <- "256197-256198"
+
+data_final1 <- data_final %>% filter(!(pairid==62))
+data_final2 <- merge(data_final1,p62,all=TRUE)
+
+data_test <- data_final2 %>% select(-c("Clone","pairid")) %>% distinct()
+write.table(data_final2, "14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
 
 ```
+
+```{r pairid 40 matches 7}
+p40 <- data_final2 %>% filter(pairid==40) %>%  select("Clone")
+p7 <- data_final2 %>% filter(pairid==7) %>%  select(-c("Clone")) %>% distinct()
+new_40 <- cbind(p40,p7)
+
+data_filt <- data_final2 %>% filter(!(pairid==40))
+data_final3 <- merge(data_filt,new_40,all=TRUE)
+
+```
+
+```{r pairid 31 matches 21}
+p31 <- data_final3 %>% filter(pairid==31) %>%  select("Clone")
+p21 <- data_final3 %>% filter(pairid==21) %>%  select(-c("Clone")) %>% distinct()
+new_31 <- cbind(p31,p21)
+
+data_filt <- data_final3 %>% filter(!(pairid==31))
+data_final4 <- merge(data_filt,new_31,all=TRUE)
+write.table(data_final4, "14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
+data_test <- data_final4 %>% select(-c("Clone","pairid")) %>% distinct()
+
+```
+
 
 ```{r format for phyloviz}
-data <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary.csv",sep='\t')
+data <- read.csv("14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",sep='\t')
 num_variations <- table(data$pairid) %>% as.data.frame()
 
 pairid_list <- data %>% select(-c("Clone")) %>% distinct()
 pairid_first <- pairid_list %>% select("pairid",everything())
 
-pairid_first[pairid_first=='NULL'] = NA
+p<- data %>% filter(pairid==26|pairid==19|pairid==15)  %>% remove_empty(which = "cols")
 
-#split out multiple calls to an IS element
-p97 <- pairid_first %>% filter(pairid ==97)
-p97_split <- as.data.frame(str_extract(string = p97$IS1678,pattern = "(?<=\\().*(?=\\))") )
-p97_values <- as.data.frame(unlist(strsplit(p97_split[1,1],','))) %>% t()
-rownames(p97_values) <- NULL
-colnames(p97_values) <- c("IS1678","IS1678_2")
-p97_edit <- p97 %>% select(-c("IS1678"))
-p97_edit1 <- cbind(p97_edit,p97_values)
-
-p73 <- pairid_first %>% filter(pairid ==73)
-p73_split <- as.data.frame(str_extract(string = p73$IS1678,pattern = "(?<=\\().*(?=\\))") )
-p73_values <- as.data.frame(unlist(strsplit(p73_split[1,1],','))) %>% t()
-rownames(p73_values) <- NULL
-colnames(p73_values) <- c("IS1678","IS1678_2")
-p73_edit <- p73 %>% select(-c("IS1678"))
-p73_edit1 <- cbind(p73_edit,p73_values)
-
-p61 <- pairid_first %>% filter(pairid ==61)
-p61_split <- as.data.frame(str_extract(string = p61$IS1678,pattern = "(?<=\\().*(?=\\))") )
-p61_values <- as.data.frame(unlist(strsplit(p61_split[1,1],','))) %>% t()
-rownames(p61_values) <- NULL
-colnames(p61_values) <- c("IS1678_2","IS1678")
-p61_edit <- p61 %>% select(-c("IS1678"))
-p61_edit1 <- cbind(p61_edit,p61_values)
-
-p48 <- pairid_first %>% filter(pairid ==48)
-p48_split <- as.data.frame(str_extract(string = p48$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
-p48_values <- as.data.frame(unlist(strsplit(p48_split[1,1],','))) %>% t()
-rownames(p48_values) <- NULL
-colnames(p48_values) <- c("ISLgar5","ISLgar5_2")
-p48_edit <- p48 %>% select(-c("ISLgar5"))
-p48_edit1 <- cbind(p48_edit,p48_values)
-
-p73 <- pairid_first %>% filter(pairid ==73)
-p73_split <- as.data.frame(str_extract(string = p73$IS1678,pattern = "(?<=\\().*(?=\\))") )
-p73_values <- as.data.frame(unlist(strsplit(p73_split[1,1],','))) %>% t()
-rownames(p73_values) <- NULL
-colnames(p73_values) <- c("IS1678","IS1678_2")
-p73_edit <- p73 %>% select(-c("IS1678"))
-p73_edit1 <- cbind(p73_edit,p73_values)
-
-p75 <- pairid_first %>% filter(pairid ==75)
-p75_split <- as.data.frame(str_extract(string = p75$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
-p75_values <- as.data.frame(unlist(strsplit(p75_split[1,1],','))) %>% t()
-rownames(p75_values) <- NULL
-colnames(p75_values) <- c("ISLgar5_2","ISLgar5")
-p75_edit <- p75 %>% select(-c("ISLgar5"))
-p75_edit1 <- cbind(p75_edit,p75_values)
-
-p43 <- pairid_first %>% filter(pairid ==43)
-p43_split <- as.data.frame(str_extract(string = p43$ISLgar5,pattern = "(?<=\\().*(?=\\))") )
-p43_values <- as.data.frame(unlist(strsplit(p43_split[1,1],','))) %>% t()
-rownames(p43_values) <- NULL
-colnames(p43_values) <- c("ISLgar5","ISLgar5_2")
-p43_edit <- p43 %>% select(-c("ISLgar5"))
-p43_edit1 <- cbind(p43_edit,p43_values)
-
-
-
-newpairids <- rbind(p97_edit1,p73_edit1,p61_edit1)
-newpairids2 <- rbind(p48_edit1,p75_edit1,p43_edit1)
-
-pairid_first1 <- pairid_first %>% filter(!(pairid == 97 | pairid == 73 | pairid == 61 |pairid == 48 |pairid == 73 |pairid == 75|pairid == 43))
-pairid_first2 <- merge(pairid_first1,newpairids, all=TRUE)
-pairid_first3 <- merge(pairid_first2,newpairids2, all=TRUE)
-
-
-write.table(pairid_first3, "20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_pairids.csv",row.names=FALSE, sep="\t",quote=FALSE)
-
-
-p<- data %>% filter(pairid==24|pairid==20|pairid==16) %>%  remove_empty(which = "cols")
-
+write.table(pairid_first, "14_enterocinA_variation/summary/enterocinA_variation_pairids_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
 
 
 mlst <- read.csv("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/first_efm_pr_bl_mlst_dateQ.csv",sep='\t')
@@ -573,6 +634,19 @@ clone_pairid_list <- data %>% select(c("Clone","pairid"))
 
 clone_mlst_pairid <- merge(clone_pairid_list,mlst, by= "Clone")
 clone_mlst_pairid1 <- clone_mlst_pairid %>% select(-c("X","cdate"))
-write.table(clone_mlst_pairid1, "20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_clone_pairids.csv",row.names=FALSE, sep="\t",quote=FALSE)
+write.table(clone_mlst_pairid1, "14_enterocinA_variation/summary/enterocinA_variation_clone_pairids_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
+
+
+
+```
+
+
+```{r}
+```{r choose isolates for phenotypic testing}
+#pick one pairid of every major mlst (more than 20isolates in that st)
+clone_mlst_pairid2 <- clone_mlst_pairid1 %>% select("Clone","pairid","ST") %>% group_by(pairid,ST)
+clone_mlst <- clone_mlst_pairid2 %>% arrange(ST) %>% filter(row_number()==1) %>% arrange(pairid)
+
+```
 
 ```
