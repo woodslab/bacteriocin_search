@@ -5,7 +5,7 @@ This repository is split into 6 parts:
 **Part 3**: Filter BLAST hits   
 **Part 4**: Cluster BLAST hits using CD-HIT  
 **Part 5**: Snakefile_variation to identify variants, low coverage regions, and insertion   elements in hits to enterocin A and bacteriocin 43  
-**Part 6**: Merge variations outputed by part 5
+**Part 6**: Filter and merge variations outputed by part 5
 
 
 # Part 1: Set up conda environment
@@ -152,7 +152,7 @@ Use IGV to output a read pileup map over bacteriocin regions of interest
 Use samtools to calculate coverage across the entire bac43 plasmid and across the bac43 genes 
 
 
-# Part 6: Merge variations
+# Part 6: Filter and merge variations
 After manually inspecting IGV read pileups and confirming variants, use R to create a master list of variants, insertion elements, and deletions. 
 
     scripts/merge_variations_enterocinA.Rmd
