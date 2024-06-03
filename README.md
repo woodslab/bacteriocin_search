@@ -1,10 +1,11 @@
-Identify bacteriocin sequences present in clinical cohort of sequenced E. faecium isolates
-This repository is split into 5 parts:
-Part 1: Set up conda environment
-Part 2: Snakefile to assemble and BLAST bacteriocin genes against isolates
-Part 3: Filter BLAST hits 
-Part 4: Cluster BLAST hits using CD-HIT
-Part 5: Snakefile_variation to identify variants, low coverage regions, and insertion elements in hits to enterocin A and bacteriocin 43
+Identify bacteriocin sequences present in clinical cohort of sequenced E. faecium isolates  
+This repository is split into 6 parts:  
+**Part 1**: Set up conda environment  
+**Part 2**: Snakefile to assemble and BLAST bacteriocin genes against isolates  
+**Part 3**: Filter BLAST hits   
+**Part 4**: Cluster BLAST hits using CD-HIT  
+**Part 5**: Snakefile_variation to identify variants, low coverage regions, and insertion   elements in hits to enterocin A and bacteriocin 43  
+**Part 6**: Merge variations outputed by part 5
 
 
 # Part 1: Set up conda environment
@@ -13,14 +14,9 @@ Create an environment (here called snakemake2) and install snakemake and pyvcf
     mamba create -c conda-forge -c bioconda -n snakemake2 snakemake
     mamba install pyvcf3
 
-Activate conda environment and load environment files
+Install plugin to use cluster
 
-    conda activate snakemake2
-    snakemake --use-conda --conda-create-envs-only -j96 
-
-It may be necessary to add the conda bin to the path so conda can activate the environments
-
-    export PATH="~/miniconda3/bin/:$PATH"
+    mamba install snakemake-executor-plugin-cluster-generic
 
 
 # Part 2: Snakefile
@@ -32,6 +28,15 @@ Edit config file to add shortread isolates under "short_read_samples" header, an
 Make new directory "shortread" and add zipped shortread fastq files (should end in .fq.gz) 
 
     mkdir shortread
+
+Activate conda environment and load environment files
+
+    conda activate snakemake2
+    snakemake --use-conda --conda-create-envs-only -j96 
+
+It may be necessary to add the conda bin to the path so conda can activate the environments
+
+    export PATH="~/miniconda3/bin/:$PATH"
 
 Do dry run of pipeline to make sure everything is working
 
@@ -69,8 +74,10 @@ Identify variants using snippy  Parameters are indicated in the config.yaml. Ref
 Use snippy_core to create a core genome. Parameters are indicated in the config.yaml. Reference is located in snippy_reference/BL00198-1.gbk.
 New data are deposited in a new directory 12_core_genome.
 If snippy_core rule fails with 
+
     Warning: No SNPs were detected so there is nothing to output.
-Use text file produced by failed snippy_core rule (should be ouputed to 12_core_genome/{reference}.txt to remove samples with less than 250,000bp aligned. Create a new list of isoaltes with greater than 250,000bp aligned and add to config/config.yaml under the "snippy_core_short_read_samples" header.
+
+Use text file produced by failed snippy_core rule (should be ouputed to 12_core_genome/{reference}.txt) to remove samples with less than 250,000bp aligned. Create a new list of isoaltes with greater than 250,000bp aligned and add to config/config.yaml under the "snippy_core_short_read_samples" header.
 #### Step 13: Generate a phylogenetic tree
 Use gubbins to create a phylogenic tree. New data are deposited in a new directory 13_gubbins.
 
@@ -103,6 +110,61 @@ Go back to R and run second part of
     analysis/process_cluster_blast_output.Rmd
 
 This will assign clusters to hits, reassign clusters of split structural genes for bacteriocins, reassign clusters numbers (for clusters that were removed so that they are sequential), rename queries, and output clustered hits for analysis - clustered_hits.csv
+
+
+# Part 5: Snakefile_variation
+Activate conda environment and load environment files
+
+    conda activate snakemake2
+    snakemake -s Snakefile_variation --use-conda --conda-create-envs-only -j96
+
+It may be necessary to add the conda bin to the path so conda can activate the environments
+
+    export PATH="~/miniconda3/bin/:$PATH"
+Do dry run of pipeline to make sure everything is working
+
+    snakemake -n -s Snakefile_variation -c24 
+
+Run pipeline
+
+    sbatch ./scripts/snake_batch_variation.sh 
+
+### Define variation in enterocin A and bactericoin 43
+Each of these steps (except where indicated) were repeated for both enterocin A and bacteriocin 43. Different internal references were used for each bacteriocin.   
+Bacteriocin 43: bwa_references/BL02040-1_assembly.fasta   
+Enterocin A: bwa_references/PR46485-1-C1_assembly.fasta   
+
+#### Step 1: Index reference
+Use BWA to index reference files
+#### Step 2: Map shortreads
+Use BWA to map shortread files to regions of interest for bacteriocins.   
+Bacteriocin 43: Contig 7
+Enterocin A: Contig 2,  246177 - 256268   
+#### Step 3: Identify and annotate variants 
+Use freebayes to identify variants and snpEFF to annotate variants.
+#### Step 4: Identify and annotate insertion elements
+Use panISa to identify potential insertion elements. Then run ISFinder through script adopted from panISa to annotate variants (scripts/ISFinder_search.py) 
+#### Step 5: Identify areas of low coverage (deletions)
+Use samtools to identify areas of low coverage as potential gene deletions
+### Step 6: Create IGV report
+Use IGV to output a read pileup map over bacteriocin regions of interest 
+### Step 7: Get coverage (bacterioin 43 only)
+Use samtools to calculate coverage across the entire bac43 plasmid and across the bac43 genes 
+
+
+# Part 6: Merge variations
+After manually inspecting IGV read pileups and confirming variants, use R to create a master list of variants, insertion elements, and deletions. 
+
+    scripts/merge_variations_enterocinA.Rmd
+    scripts/merge_variations_bac43.Rmd
+
+For bacteriocin 43, isolates and variants were evaluated using three rules:   
+1. Filter out isolates that have sparse coverage to plasmid (45% or greater mean depth across the plasmid and 55% or greater coverage)   
+2. Split out positions that have split hits to the bac43 plasmid and other regions of the genome (DPtoRO < 0.2  (i.e. reads calling the reference allele make up less than 20% of the total reads mapped) and RO < 100 (i.e. less than 100 reads mapping to reference allele))   
+3. Identify true variants to the bacteriocin 43 plasmid (percent identity greater than 99.5% unless bacteriocin 43 was identified in the BLAST search)   
+
+    
+
 
 
 
