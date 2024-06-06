@@ -29,6 +29,8 @@ Make new directory "shortread" and add zipped shortread fastq files (should end 
 
     mkdir shortread
 
+If doing a hybrid assembly, also make a directory "longread" and add zipped longread fastq files. Add isolates to the config file under the header "long_read_samples".
+
 Activate conda environment and load environment files
 
     conda activate snakemake2
@@ -50,8 +52,12 @@ Run pipeline
 
 #### Step 1: Trim shortreads 
 Short read data is trimmed with trimmomatic . Parameters are indicated in the config.yaml. New data are deposted in a new directory 01_trimmed_shortread
+#### Step 1a: Trim longreads 
+(For hybrid assembly) Long read data is trimmed with porechop . Parameters are indicated in the config.yaml. New data are deposted in a new directory 01_trimmed_longread
 #### Step 2: Assemble shortreads
-Shor read data is assembled using Unicycler. Parameters are indicated in the config.yaml. New data are deposted in a new directory 02_assembly
+Short read data is assembled using Unicycler. Parameters are indicated in the config.yaml. New data are deposted in a new directory 02_assembly
+#### Step 2a: Hyrbid assembly
+(For hybrid assembly) Short read and long read data is assembled using Unicycler. Parameters are indicated in the config.yaml. New data are deposted in a new directory 02_hybrid_assembly
 #### Step 3: Index and annotate assemblies
 Assemblies are annotated using Prokka. New data are deposited in a new directory 03_indexed_anno_reference.
 #### Step 4: Identify MLST
@@ -78,6 +84,9 @@ If snippy_core rule fails with
     Warning: No SNPs were detected so there is nothing to output.
 
 Use text file produced by failed snippy_core rule (should be ouputed to 12_core_genome/{reference}.txt) to remove samples with less than 250,000bp aligned. Create a new list of isoaltes with greater than 250,000bp aligned and add to config/config.yaml under the "snippy_core_short_read_samples" header.
+
+    scripts/determine_snippy_core_isolates.Rmd
+    
 #### Step 13: Generate a phylogenetic tree
 Use gubbins to create a phylogenic tree. New data are deposited in a new directory 13_gubbins.
 
