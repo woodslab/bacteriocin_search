@@ -1,0 +1,442 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(data.table)
+library(RColorBrewer)
+library(viridis)
+library(grafify)
+library(dplyr)
+library(plyr)
+
+
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r data}
+isolate_pid_mlst <- read.csv("./data/first_efm_pr_bl_mlst.csv")
+hits <- read.csv("./data/clustered_hits.csv")
+```
+
+```{r bacterocins identified}
+hits$label <- paste(hits$query,hits$cluster,sep=" (") #merge cluster and query
+paren <- rep(")",times=nrow(hits))
+hits$paren <- paren
+hits$label <- paste(hits$label,hits$paren,sep="")
+hits1 <- hits[,c("X.x","pid","source","cluster","query","sseqid","pident","length","mismatch","gapopen","qstart","qend","sstart","send","evalue","bitscore","qseq","sseq","cdate","st","label")] #reorder columns
+
+cluster_query <- hits1 %>% select(c(query,cluster,label)) %>% distinct()
+
+bacteriocins <- table(hits$cluster)  %>% sort(decreasing = TRUE) %>% as.data.frame() #count number of hits to each cluster
+colnames(bacteriocins) <- c("cluster", "Freq")
+
+bac_clust <- merge(bacteriocins,cluster_query, by="cluster")
+bac_clust <- transform(bac_clust,Freq=as.numeric(Freq))
+bac_ordered <- bac_clust[order(bac_clust$Freq,decreasing=TRUE),]
+
+#label for 4 major hits coloring
+bac_ordered$query2 <- "Other"
+bac_ordered[bac_ordered$cluster=="clust2","query2"] <- "Bac43"
+bac_ordered[bac_ordered$cluster=="clust3","query2"] <- "Bac43"
+bac_ordered[bac_ordered$cluster=="clust15","query2"] <- "Bac43"
+bac_ordered[bac_ordered$cluster=="clust16","query2"] <- "Bac43"
+
+bac_ordered[bac_ordered$cluster=="clust4","query2"] <- "Enterocin NKR-5-3B"
+
+bac_ordered[bac_ordered$cluster=="clust1","query2"] <- "Enterocin A"
+bac_ordered[bac_ordered$cluster=="clust17","query2"] <- "Enterocin A"
+bac_ordered[bac_ordered$cluster=="clust18","query2"] <- "Enterocin A"
+
+
+bac_ordered$percent <- (bac_ordered$Freq/2428)*100
+bac_ordered$group <- ifelse(bac_ordered$Freq >= 70, 1,2) #group hits for facet wrapping
+bac_ordered$label <- factor(bac_ordered$label, levels = bac_ordered$label)
+
+```
+
+
+```{r figure 1 bacteriocin clusters identified}
+p1 <- ggplot(bac_ordered,aes(x=label,y=percent,fill=query2))+
+  geom_bar(stat="identity") +
+  labs(x="Bacteriocin closest hit", y= "Percentage\nof isolates", title="Clustered Bacteriocin Hits") +
+  scale_fill_manual(name="Bacteriocin closest hit",
+                    values= c("Enterocin A"= "#baa094",
+                              "Bac43"= "#55ad89",
+                              "Enterocin NKR-5-3B" = "#8cc2ca",
+                              "Other"="#767676"))+
+  theme(axis.text.x = element_text(angle=60,vjust=1,hjust=1),
+        axis.text=element_text(size=10),
+        axis.title=element_text(size=15),
+        axis.title.y = element_text(angle=0, vjust = 0.5),
+        legend.text=element_text(size=15),
+        legend.title =element_text(size=15),
+        plot.title = element_text(size=20,hjust = 0.5),
+        strip.background = element_blank(), 
+        strip.text = element_blank()) + 
+  facet_wrap(~as.factor(group), scales = "free")
+
+
+p1 + ggforce::facet_row(vars(group), scales = 'free', space = 'free')
+ggsave("./plots/bacteriocin_hits.png",plot=last_plot(),device="png")
+
+```
+
+
+```{r make quarters for dates}
+
+isolate_pid_mlst$cdate <- as.Date(isolate_pid_mlst$cdate)
+date_range <- seq(as.Date("2016/01/01"), by="3 month", length.out = 25)
+isolate_pid_mlst <- 
+  isolate_pid_mlst%>% mutate(
+  type = case_when(
+    cdate %within% interval(date_range[1], date_range[2]) ~ "2016 Q1",
+    cdate %within% interval(date_range[2], date_range[3]) ~ "2016 Q2",
+    cdate %within% interval(date_range[3], date_range[4]) ~ "2016 Q3",
+    cdate %within% interval(date_range[4], date_range[5]) ~ "2016 Q4",
+    cdate %within% interval(date_range[5], date_range[6]) ~ "2017 Q1",
+    cdate %within% interval(date_range[6], date_range[7]) ~ "2017 Q2",
+    cdate %within% interval(date_range[7], date_range[8]) ~ "2017 Q3",
+    cdate %within% interval(date_range[8], date_range[9]) ~ "2017 Q4",
+    cdate %within% interval(date_range[9], date_range[10]) ~ "2018 Q1",
+    cdate %within% interval(date_range[10], date_range[11]) ~ "2018 Q2",
+    cdate %within% interval(date_range[11], date_range[12]) ~ "2018 Q3",
+    cdate %within% interval(date_range[12], date_range[13]) ~ "2018 Q4",
+    cdate %within% interval(date_range[13], date_range[14]) ~ "2019 Q1",
+    cdate %within% interval(date_range[14], date_range[15]) ~ "2019 Q2",
+    cdate %within% interval(date_range[15], date_range[16]) ~ "2019 Q3",
+    cdate %within% interval(date_range[16], date_range[17]) ~ "2019 Q4",
+    cdate %within% interval(date_range[17], date_range[18]) ~ "2020 Q1",
+    cdate %within% interval(date_range[18], date_range[19]) ~ "2020 Q2",
+    cdate %within% interval(date_range[19], date_range[20]) ~ "2020 Q3",
+    cdate %within% interval(date_range[20], date_range[21]) ~ "2020 Q4",
+    cdate %within% interval(date_range[21], date_range[22]) ~ "2021 Q1",
+    cdate %within% interval(date_range[22], date_range[23]) ~ "2021 Q2",
+    cdate %within% interval(date_range[23], date_range[24]) ~ "2021 Q3",
+    cdate %within% interval(date_range[24], date_range[25]) ~ "2021 Q4",
+  ))
+
+write.table(isolate_pid_mlst, "data/first_efm_pr_bl_mlst_dateQ.csv",row.names=FALSE, sep="\t",quote=FALSE)
+
+#data$Treatment <- factor(data$Treatment, levels=c("2016 Q1", "2016 Q2", "2016 Q3","2016 Q4", "2017 Q1", "2017 Q2", "2017 Q3","2017 Q4","2018 Q1", "2018 Q2", "2018 Q3","2018 Q4", "2019 Q1", "2019 Q2", "2019 Q3","2019 Q4","2020 Q1", "2020 Q2", "2020 Q3","2020 Q4","2021 Q1", "2021 Q2", "2021 Q3","2021 Q4"))
+```
+
+
+```{r functional bacteriocins}
+#remove non-functional isolates 
+bac43_pairids <- read.csv("data/bac43_variation_clone_pairids.csv",sep='\t') %>% filter(!(pairid==84|pairid==57|pairid==9|pairid==36|pairid==73|pairid==48|pairid==56)) %>% filter(!(Clone=="BL01532-1"|Clone=="BL01202-1"|Clone=="PR29013-1-C1"|Clone=="PR39462-1-C1"))
+bac43_label <- rep("Bac43",nrow(bac43_pairids))
+bac43_pairids$label <- bac43_label
+names(bac43_pairids)[names(bac43_pairids) == 'Clone'] <- 'source'
+
+#select functional ids
+entA_pairids <- read.csv("data/enterocinA_variation_clone_pairids_final.csv",sep='\t') %>% filter(pairid==6|pairid==9|pairid==12|pairid==26|pairid==73|pairid==85)
+entA_label <- rep("Enterocin A",nrow(entA_pairids))
+entA_pairids$label <- entA_label
+names(entA_pairids)[names(entA_pairids) == 'Clone'] <- 'source'
+
+```
+
+
+```{r percentages of bac43 and enterocin A over time}
+cluster_query_source <- hits1 %>% select(c("label","source","st","cdate"))
+
+#bac43 percentages
+bac43_pairids_filter <- bac43_pairids %>% select("source","pairid","label")
+bac43_presence <- merge(isolate_pid_mlst,bac43_pairids_filter,by="source",all=TRUE)
+bac43_presence[is.na(bac43_presence)] <- "absent"
+bac43_presence1 <- bac43_presence %>% select(c("label","type"))
+bac43_percentages <- bac43_presence1 %>% group_by(label, type) %>% dplyr::summarise(n=n()) %>% arrange(type) %>% group_by(type) %>% mutate(percent=(n/sum(n)*100))
+type_sum <- aggregate(bac43_percentages$n, by=list(type=bac43_percentages$type), FUN=sum)
+bac43_percentages<- bac43_presence1 %>% group_by(label, type) %>% dplyr::summarise(n=n()) %>% arrange(type) %>% group_by(type)
+type_sum <- aggregate(bac43_percentages$n, by=list(type=bac43_percentages$type), FUN=sum)
+colnames(type_sum) <- c("type","total")
+bac43_percentages1 <- merge(bac43_percentages, type_sum, by ="type", all.x=TRUE)
+bac43_percentages1$percent <- (bac43_percentages1$n/bac43_percentages1$total)*100
+bac43_percentages_filter <- bac43_percentages1 %>% filter(label=="Bac43")
+
+
+#enterocin A full percentages
+entA_pairids_filter <- entA_pairids %>% select("source","pairid","label")
+enterocinA_full_presence <- merge(isolate_pid_mlst,entA_pairids_filter,by="source",all=TRUE)
+enterocinA_full_presence[is.na(enterocinA_full_presence)] <- "absent"
+enterocinA_full_presence1 <- enterocinA_full_presence %>% select(c("label","type"))
+colnames(enterocinA_full_presence1) <- c("label","type")
+enterocinA_percentages<- enterocinA_full_presence1 %>% group_by(label, type) %>% dplyr::summarise(n=n()) %>% arrange(type) %>% group_by(type)
+type_sum <- aggregate(enterocinA_percentages$n, by=list(type=enterocinA_percentages$type), FUN=sum)
+colnames(type_sum) <- c("type","total")
+enterocinA_percentages1 <- merge(enterocinA_percentages, type_sum, by ="type", all.x=TRUE)
+enterocinA_percentages1$percent <- (enterocinA_percentages1$n/enterocinA_percentages1$total)*100
+
+
+enterocinA_percentages_filter <- enterocinA_percentages1 %>% filter(label== "Enterocin A")
+dates <- as.data.frame(c("2016 Q1", "2016 Q2", "2016 Q3","2016 Q4", "2017 Q1", "2017 Q2", "2017 Q3","2017 Q4","2018 Q1", "2018 Q2", "2018 Q3","2018 Q4", "2019 Q1", "2019 Q2", "2019 Q3","2019 Q4","2020 Q1", "2020 Q2", "2020 Q3","2020 Q4","2021 Q1", "2021 Q2", "2021 Q3","2021 Q4"))
+colnames(dates) <- c("type")
+enterocinA_percentages_filter1 <- merge(enterocinA_percentages_filter,dates,by="type",all=TRUE)
+enterocinA_percentages_filter1[is.na(enterocinA_percentages_filter1)] <- 0
+ent_label <- rep("Enterocin A",nrow(enterocinA_percentages_filter1))
+enterocinA_percentages_filter1$label <- ent_label
+
+#merge percentages
+bacteriocin_percentages <- rbind(bac43_percentages_filter,enterocinA_percentages_filter1)
+bacteriocin_percentages$type <- factor(bacteriocin_percentages$type, levels=c("2016 Q1", "2016 Q2", "2016 Q3","2016 Q4", "2017 Q1", "2017 Q2", "2017 Q3","2017 Q4","2018 Q1", "2018 Q2", "2018 Q3","2018 Q4", "2019 Q1", "2019 Q2", "2019 Q3","2019 Q4","2020 Q1", "2020 Q2", "2020 Q3","2020 Q4","2021 Q1", "2021 Q2", "2021 Q3","2021 Q4"))
+
+```
+
+```{r figure # - bacteriocin presence over time}
+ggplot(bacteriocin_percentages, aes(x=as.factor(type), y=percent, group=label,color=label))+
+  geom_line(size=1) +
+  labs(x="Date", y="Percentage\nof isolates", title="Bacteriocins Over Time", color="Bacteriocin hit") +
+  guides(colour=guide_legend(title="Bacteriocin")) +
+  scale_color_manual(breaks=c("Enterocin A","Bac43"),
+                    values=c("#baa094","#55ad89"))+
+  scale_x_discrete(breaks = function(x){x[c(TRUE, FALSE, FALSE, FALSE)]}) +
+  theme(axis.text=element_text(size=13), 
+        axis.title=element_text(size=15),
+        legend.text=element_text(size=15),
+        legend.title =element_text(size=15),
+        axis.title.y = element_text(angle=0, vjust = 0.5),
+        plot.title = element_text(size=20,hjust = 0.5))
+
+ggsave("./plots/bacteriocins_over_time.png",plot=last_plot(),device="png")
+```
+
+
+
+```{r figure # - mlsts over time - one isolate per pid}
+#get first isolate per pid
+one_pid <- isolate_pid_mlst %>% group_by(pid) %>% arrange(cdate) %>% filter(row_number()==1) %>% arrange(cdate) 
+
+st_date <- one_pid %>% select(c("st","type"))
+others<-c(names(which(sort(table(st_date$st))<20)), "-") #only keep sts with more than 20 isolates assigned to them (name everything else 'other')
+st_date$st <- plyr::mapvalues(st_date$st, c(names(which(sort(table(st_date$st))<20)), "-"), rep("Other", length(others)))  
+
+#as line plot
+perc<- st_date %>% group_by(st, type) %>% dplyr::summarise(n=n()) %>% arrange(type) %>% group_by(type)
+type_sum <- aggregate(perc$n, by=list(type=perc$type), FUN=sum)
+colnames(type_sum) <- c("type","total")
+percentages <- merge(perc, type_sum, by ="type", all.x=TRUE)
+percentages$percent <- (percentages$n/percentages$total)*100
+
+percentages$type<- factor(percentages$type, levels=c("2016 Q1", "2016 Q2", "2016 Q3","2016 Q4", "2017 Q1", "2017 Q2", "2017 Q3","2017 Q4","2018 Q1", "2018 Q2", "2018 Q3","2018 Q4", "2019 Q1", "2019 Q2", "2019 Q3","2019 Q4","2020 Q1", "2020 Q2", "2020 Q3","2020 Q4","2021 Q1", "2021 Q2", "2021 Q3","2021 Q4"))
+
+p1 <- ggplot(percentages, aes(x=as.factor(type), y=percent, group=st, color=st))+
+  geom_line(aes(size=st),show.legend = FALSE) +
+  geom_line(aes(color=st)) +
+  labs(x="Date", y="Percentage\nof isolates", title="MLSTs Over Time", color="MLST",size="MLST") +
+  guides(colour=guide_legend(title="MLST")) +
+  scale_color_grafify(palette="fishy")+
+  #scale_color_manual(breaks=c("117","1471","17","18","412","584","664","734","80","Other"),
+                    #values=c("#6388b4","#ffae35","#ef6f6b","#8cc2ca","#55ad89","#c4bc3f","#bc7693","#baa094","#767676","#121212"))
+  scale_size_manual(values = c('117' = 2.5,
+                               '1471'= 0.5,
+                               '17'= 0.5,
+                               '18'=0.5,
+                               '412'=0.5,
+                               '584'=0.5,
+                               '664'=0.5,
+                               '734'=0.5,
+                               '80'= 2.5,
+                               'Other'=0.5)) +
+  scale_x_discrete(breaks = function(x){x[c(TRUE, FALSE, FALSE, FALSE)]}) +
+  theme(axis.text=element_text(size=13), 
+        axis.title=element_text(size=15),
+        legend.text=element_text(size=15),
+        legend.title =element_text(size=15),
+        axis.title.y = element_text(angle=0, vjust = 0.5),
+        plot.title = element_text(size=20,hjust = 0.5))
+
+
+ggsave("./plots/mlst_over_time.png",plot=last_plot(),device="png",width=20)
+```
+
+
+```{r is there a difference in bacteriocin presence between PR and BL isolates}
+hit_summary <- data.frame(matrix(ncol=3,nrow=2))
+colnames(hit_summary) <- c("cluster","PR","BL")
+
+entA_bl <- entA_pairids %>% filter(grepl('BL', source))
+entA_pr <- entA_pairids %>% filter(grepl('PR', source))
+bac43_bl <- bac43_pairids %>% filter(grepl('BL', source))
+bac43_pr <- bac43_pairids %>% filter(grepl('PR', source))
+
+hit_summary[1,]<- c("Enterocin A",nrow(entA_pr),nrow(entA_bl))
+hit_summary[2,]<- c("Bac43",nrow(bac43_pr),nrow(bac43_bl))
+
+
+hits_prbl_fishers <- data.frame(matrix(ncol=5,nrow=0))
+colnames(hits_prbl_fishers) <- c("cluster","PR","BL","fishers_pvalue","odds_ratio")
+
+for (i in 1:nrow(hit_summary)) {
+  cluster <- toString(hit_summary[i,1])
+  pr_num_wiot_hit <- 2145- as.numeric(hit_summary[i,2])
+  bl_num_wiot_hit <- 268- as.numeric(hit_summary[i,3])
+
+  cluster_matrix <- matrix(c(as.numeric(hit_summary[i,2]),  pr_num_wiot_hit, as.numeric(hit_summary[i,3]), bl_num_wiot_hit), nrow=2, dimnames= list(c("patients w/ cluster hit", "patients w/o hit"),c("PR", "BL")))
+
+  fishers <-fisher.test(cluster_matrix, alternative = "two.sided")
+  odds <- fishers$estimate
+  pvalue <- fishers$p.value
+  hits_prbl_fishers[nrow(hits_prbl_fishers) + 1,] =  c(cluster, hit_summary[i,2], hit_summary[i,3],pvalue,odds)
+}
+
+
+```
+
+
+
+```{r van analysis from blast}
+van <- read.csv("data/besthits_vanABMD.csv")
+van_hits <- van %>% select(source, query)%>% unique() %>%
+  mutate(source=source) %>%pivot_wider(names_from = query, values_from = query)
+
+vanA <- van_hits %>% select(c ("source","vanR(M97297.1)","vanS(M97297.1)","vanH(M97297.1)","vanA(M97297.1)","vanX(M97quit297.1)","vanY(M97297.1)","vanZ(M97297.1)"))
+vanA_all <- vanA %>% na.omit() %>% select(source) # sources that have all genes of vanA operon 
+write.csv(vanA, "data/vanA_operon.csv")
+
+vanB <- van_hits %>% select(c ("source","vanB(AF192329.1)","vanRB(AF192329.1)","vanSB(AF192329.1)","vanHB(AF192329.1)","vanYB(AF192329.1)","vanXB((AF192329.1)","vanW(AF192329.1)"))
+vanB_all <- vanB %>% na.omit() %>% select(source)# sources that have all genes of vanB operon 
+write.csv(vanB, "data/vanB_operon.csv")
+
+vanAB <- rbind(vanA_all,vanB_all)
+```
+
+
+```{r pr vs bl van genomics }
+van_hit_summary <- data.frame(matrix(ncol=3,nrow=2))
+colnames(van_hit_summary) <- c("cluster"," VRE_PR","VRE_BL")
+
+van_entA <- merge(entA_pairids,vanAB,by="source")
+van_bac43 <- merge(bac43_pairids,vanAB,by="source")
+
+van_entA_bl <- van_entA %>% filter(grepl('BL', source))
+van_entA_pr <- van_entA %>% filter(grepl('PR', source))
+van_bac43_bl <- van_bac43 %>% filter(grepl('BL', source))
+van_bac43_pr <- van_bac43 %>% filter(grepl('PR', source))
+
+van_hit_summary[1,]<- c("Enterocin A",nrow(van_entA_pr),nrow(van_entA_bl))
+van_hit_summary[2,]<- c("Bac43",nrow(van_bac43_pr),nrow(van_bac43_bl))
+
+
+van_hits_prbl_fishers <- data.frame(matrix(ncol=5,nrow=0))
+colnames(van_hits_prbl_fishers) <- c("cluster","PR","BL","fishers_pvalue","odds_ratio")
+
+for (i in 1:nrow(van_hit_summary)) {
+  cluster <- toString(van_hit_summary[i,1])
+  pr_num_wiot_hit <- 1889- as.numeric(van_hit_summary[i,2])
+  bl_num_wiot_hit <- 148- as.numeric(van_hit_summary[i,3])
+
+  cluster_matrix <- matrix(c(as.numeric(van_hit_summary[i,2]),  pr_num_wiot_hit, as.numeric(van_hit_summary[i,3]), bl_num_wiot_hit), nrow=2, dimnames= list(c("patients w/ cluster hit", "patients w/o hit"),c("PR", "BL")))
+
+  fishers <-fisher.test(cluster_matrix, alternative = "two.sided")
+  odds <- fishers$estimate
+  pvalue <- fishers$p.value
+  van_hits_prbl_fishers[nrow(van_hits_prbl_fishers) + 1,] =  c(cluster, van_hit_summary[i,2], van_hit_summary[i,3],pvalue,odds)
+}
+
+
+```
+
+```{r van analysis from microlab}
+pr <- read.csv("/nfs/turbo/umms-robertwo/agarret/pr_micro.csv")
+pr1 <- pr %>% select(c("clone","organism","vre_vse","isolation"))
+names(pr1)[names(pr1) == 'clone'] <- 'source'
+pr_isolates <- merge(isolate_pid_mlst,pr1,by="source")
+pr_isolates1 <- pr_isolates %>% filter(grepl('VRE select', isolation))
+pr_isolates_filter <- pr_isolates1 %>% select(c("source","st"))
+
+
+bl <- read.csv("/nfs/turbo/umms-robertwo/agarret/bl_microlab.csv")
+bl1 <- bl %>% select(c("label","plate","vre_vse","drug_name","drug_result","drug_interp"))
+bl2 <- bl1 %>% filter(drug_name=="Vancomycin") %>% filter(drug_interp=="R")
+isolate_pid_mlst[c('label', 'clone')] <- str_split_fixed(isolate_pid_mlst$source, '-', 2)
+bl_isolates <- merge(isolate_pid_mlst,bl2,by="label") %>% distinct()
+bl_isolates_filter <- bl_isolates %>% select(c("source","clone","st"))
+
+vre_pr_bl <- merge(pr_isolates_filter,bl_isolates_filter,by=c("source",'st'),all=TRUE)
+
+bac43_pairids_filter <- bac43_pairids %>% select("source","pairid","label")
+vre_bac43_presence <- merge(vre_pr_bl,bac43_pairids_filter,by="source",all.x=TRUE)
+vre_bac43_presence$label[is.na(vre_bac43_presence$label)] <- "absent"
+
+
+entA_pairids_filter <- entA_pairids %>% select("source","pairid","label")
+vre_enterocinA_presence <- merge(vre_pr_bl,entA_pairids_filter,by="source",all.x=TRUE)
+vre_enterocinA_presence$label[is.na(vre_enterocinA_presence$label)] <- "absent"
+```
+
+```{r pr vs bl van microlab }
+van_hit_summary <- data.frame(matrix(ncol=3,nrow=2))
+colnames(van_hit_summary) <- c("cluster"," VRE_PR","VRE_BL")
+
+
+van_entA_bl <- vre_enterocinA_presence %>% filter(grepl('BL', source)) %>% filter(label=="Enterocin A")
+van_entA_pr <- vre_enterocinA_presence %>% filter(grepl('PR', source)) %>% filter(label=="Enterocin A")
+van_bac43_bl <- vre_bac43_presence %>% filter(grepl('BL', source)) %>% filter(label=="Bac43")
+van_bac43_pr <- vre_bac43_presence %>% filter(grepl('PR', source)) %>% filter(label=="Bac43")
+
+van_hit_summary[1,]<- c("Enterocin A",nrow(van_entA_pr),nrow(van_entA_bl))
+van_hit_summary[2,]<- c("Bac43",nrow(van_bac43_pr),nrow(van_bac43_bl))
+
+
+van_hits_prbl_fishers <- data.frame(matrix(ncol=5,nrow=0))
+colnames(van_hits_prbl_fishers) <- c("cluster","PR","BL","fishers_pvalue","odds_ratio")
+
+for (i in 1:nrow(van_hit_summary)) {
+  cluster <- toString(van_hit_summary[i,1])
+  pr_num_wiot_hit <- 2142- as.numeric(van_hit_summary[i,2])
+  bl_num_wiot_hit <- 167- as.numeric(van_hit_summary[i,3])
+
+  cluster_matrix <- matrix(c(as.numeric(van_hit_summary[i,2]),  pr_num_wiot_hit, as.numeric(van_hit_summary[i,3]), bl_num_wiot_hit), nrow=2, dimnames= list(c("patients w/ cluster hit", "patients w/o hit"),c("PR", "BL")))
+
+  fishers <-fisher.test(cluster_matrix, alternative = "two.sided")
+  odds <- fishers$estimate
+  pvalue <- fishers$p.value
+  van_hits_prbl_fishers[nrow(van_hits_prbl_fishers) + 1,] =  c(cluster, van_hit_summary[i,2], van_hit_summary[i,3],pvalue,odds)
+}
+
+
+
+#enterocin A
+  cluster <- toString(van_hit_summary[1,1])
+  pr_num_wiot_hit <- 2142- as.numeric(van_hit_summary[1,2])
+  bl_num_wiot_hit <- 167- as.numeric(van_hit_summary[1,3])
+
+  cluster_matrix <- matrix(c(as.numeric(van_hit_summary[1,2]),  pr_num_wiot_hit, as.numeric(van_hit_summary[1,3]), bl_num_wiot_hit), nrow=2, dimnames= list(c("patients w/ cluster hit", "patients w/o hit"),c("PR", "BL")))
+
+  fishers <-fisher.test(cluster_matrix, alternative = "two.sided")
+  odds <- fishers$estimate
+  pvalue <- fishers$p.value
+  van_hits_prbl_fishers[nrow(van_hits_prbl_fishers) + 1,] =  c(cluster, van_hit_summary[1,2], van_hit_summary[1,3],pvalue,odds)
+```
+
+
+
+```{r pr vs bl bar chart}
+hit_summary_percent <- hit_summary
+hit_summary_percent$PR <- (as.numeric(hit_summary_percent$PR)/2145)*100
+hit_summary_percent$BL <- (as.numeric(hit_summary_percent$BL)/268) *100
+
+van_hit_summary_percent <- van_hit_summary
+van_hit_summary_percent$VRE_BL <- (as.numeric(van_hit_summary_percent$VRE_BL)/148) *100
+van_hit_summary_percent$VRE_PR_perc <- c(2,1167)
+van_hit_summary_percent$VRE_PR_perc <- (van_hit_summary_percent$VRE_PR_perc/1889)*100
+van_hit_summary_percent1 <- van_hit_summary_percent %>% select(c("cluster","VRE_BL","VRE_PR_perc"))
+names(van_hit_summary_percent1)[names(van_hit_summary_percent1) == 'VRE_PR_perc'] <- 'VRE_PR'
+
+hit_percentages <- merge(hit_summary_percent,van_hit_summary_percent1,by="cluster")
+hit_entA <- hit_percentages %>% filter(cluster=="Enterocin A") %>% select(-("cluster"))
+hit_entA_longer <- pivot_longer(hit_entA,names_to= "cohort" ,values_to= "percent",cols=everything())
+entA <- rep("Enterocin A", nrow(hit_entA_longer ))
+hit_entA_longer$hit <- entA
+
+hit_bac <- hit_percentages %>% filter(cluster=="Bac43") %>% select(-("cluster"))
+hit_bac_longer <- pivot_longer(hit_bac,names_to= "cohort" ,values_to= "percent",cols=everything())
+bac <- rep("Bac43", nrow(hit_bac_longer ))
+hit_bac_longer$hit <- bac
+
+hit_perc <- rbind(hit_entA_longer,hit_bac_longer)
+
+ggplot(hit_bac_longer, aes(x=cohort, y=percent)) +
+  geom_bar(stat="identity", position = "dodge") + 
+  labs(title="Multiple Bar plots")
+```

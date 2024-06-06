@@ -1,0 +1,23 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r ent53B hits}
+besthits <- read.csv("./data/besthits_ent53B.csv")
+
+```
+
+```{r genes}
+enkb <- besthits %>% filter(query=="enkB") 
+enkb1 <- besthits %>% filter(query=="enkB1") 
+```
+
+```{r phenotypic analysis}
+enkb_isolates <- enkb %>% select(source)
+mlst_isolate <- read.csv("./data/first_efm_pr_bl_mlst_dateQ.csv",sep='\t')
+
+
+merged <- merge(enkb_isolates,mlst_isolate,by="source", all.x=TRUE) %>% select(c("source","st"))
+first <- merged %>% group_by(st) %>% arrange(st) %>% filter(row_number()==1) 
+```

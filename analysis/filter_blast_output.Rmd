@@ -1,0 +1,172 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+
+```
+
+```{r filter 06_blast_all_bacteriocins}
+setwd("/nfs/turbo/umms-robertwo/agarret/20230503_within-host/06_blast_all_bacteriocins")
+
+all_besthits = data.frame() #make dataframe for all outputs
+filenames = dir(path="/nfs/turbo/umms-robertwo/agarret/20230503_within-host/06_blast_all_bacteriocins", pattern = "*blastoutput_all_bacteriocins.txt") #get filenames in output directory
+
+for(file in filenames) {
+     if (!file.size(file) == 0) { #if blast output file is empty - ignore
+        output <- read.table(file, header=FALSE, sep="\t")
+        colnames(output) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")
+    
+        besthits<-output %>% 
+          mutate(start1 = pmin(sstart, send)) %>% 
+          mutate(end1 = pmax(sstart, send)) %>% 
+          arrange(start1) %>% 
+          group_by(index = cumsum(cummax(lag(end1, default = first(end1))) < start1),sseqid) %>% 
+          slice_max(bitscore) %>% 
+          filter(evalue<1e-08) %>%  
+          subset(select=-c(index,start1,end1)) %>% 
+          arrange(sseqid) 
+        
+        splitfile <- str_split(file, "_blastoutput", simplify=TRUE)
+        source <- splitfile[,1]
+        besthits["source"] <- source
+        besthits <- besthits[,c("source","query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")]
+        all_besthits <- rbind(all_besthits,besthits)
+      }
+} 
+
+write.csv(all_besthits,"/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/first_16to21_besthits.csv",row.names = TRUE)
+
+```
+
+
+
+```{r filter 07_blast_enterocinA}
+setwd("/nfs/turbo/umms-robertwo/agarret/20230503_within-host/07_blast_enterocinA")
+
+all_besthits = data.frame() #make dataframe for all outputs
+filenames = dir(path="/nfs/turbo/umms-robertwo/agarret/20230503_within-host/07_blast_enterocinA", pattern = "*blastoutput_enterocinA.txt") #get filenames in output directory
+
+for(file in filenames) {
+      if (!file.size(file) == 0) { #if blast output file is empty - ignore
+        output <- read.table(file, header=FALSE, sep="\t")
+        colnames(output) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")
+    
+        besthits<-output %>% 
+          mutate(start1 = pmin(sstart, send)) %>% 
+          mutate(end1 = pmax(sstart, send)) %>% 
+          arrange(start1) %>% 
+          group_by(index = cumsum(cummax(lag(end1, default = first(end1))) < start1),sseqid,query) %>% 
+          slice_max(bitscore) %>%   
+          subset(select=-c(index,start1,end1)) %>% 
+          arrange(sseqid) 
+        
+        splitfile <- str_split(file, "_blastoutput", simplify=TRUE)
+        source <- splitfile[,1]
+        besthits["source"] <- source
+        besthits <- besthits[,c("source","query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")]
+        all_besthits <- rbind(all_besthits,besthits)
+      }
+} 
+
+write.csv(all_besthits,"/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/besthits_enterocinA.csv",row.names = TRUE)
+
+```
+
+
+
+```{r filter 08_blast_bac43}
+setwd("/nfs/turbo/umms-robertwo/agarret/20230503_within-host/08_blast_bac43")
+
+all_besthits = data.frame() #make dataframe for all outputs
+filenames = dir(path="/nfs/turbo/umms-robertwo/agarret/20230503_within-host/08_blast_bac43", pattern = "*blastoutput_bac43.txt") #get filenames in output directory
+
+for(file in filenames) {
+      if (!file.size(file) == 0) { #if blast output file is empty - ignore
+        output <- read.table(file, header=FALSE, sep="\t")
+        colnames(output) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")
+    
+        besthits<-output %>% 
+          mutate(start1 = pmin(sstart, send)) %>% 
+          mutate(end1 = pmax(sstart, send)) %>% 
+          arrange(start1) %>% 
+          group_by(index = cumsum(cummax(lag(end1, default = first(end1))) < start1),sseqid,query) %>% 
+          slice_max(bitscore) %>%   
+          subset(select=-c(index,start1,end1)) %>% 
+          arrange(sseqid) 
+        
+        splitfile <- str_split(file, "_blastoutput", simplify=TRUE)
+        source <- splitfile[,1]
+        besthits["source"] <- source
+        besthits <- besthits[,c("source","query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")]
+        all_besthits <- rbind(all_besthits,besthits)
+      }
+} 
+
+write.csv(all_besthits,"/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/besthits_bac43.csv",row.names = TRUE)
+
+```
+
+
+
+```{r filter 09_blast_ent53B}
+setwd("/nfs/turbo/umms-robertwo/agarret/20230503_within-host/09_blast_ent53B")
+
+all_besthits = data.frame() #make dataframe for all outputs
+filenames = dir(path="/nfs/turbo/umms-robertwo/agarret/20230503_within-host/09_blast_ent53B", pattern = "*blastoutput_ent53B.txt") #get filenames in output directory
+
+for(file in filenames) {
+      if (!file.size(file) == 0) { #if blast output file is empty - ignore
+        output <- read.table(file, header=FALSE, sep="\t")
+        colnames(output) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")
+    
+        besthits<-output %>% 
+          mutate(start1 = pmin(sstart, send)) %>% 
+          mutate(end1 = pmax(sstart, send)) %>% 
+          arrange(start1) %>% 
+          group_by(index = cumsum(cummax(lag(end1, default = first(end1))) < start1),sseqid,query) %>% 
+          slice_max(bitscore) %>%   
+          subset(select=-c(index,start1,end1)) %>% 
+          arrange(sseqid) 
+        
+        splitfile <- str_split(file, "_blastoutput", simplify=TRUE)
+        source <- splitfile[,1]
+        besthits["source"] <- source
+        besthits <- besthits[,c("source","query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")]
+        all_besthits <- rbind(all_besthits,besthits)
+      }
+}  
+
+write.csv(all_besthits,"/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/besthits_ent53B.csv",row.names = TRUE)
+
+```
+
+
+```{r filter 10_blast_vanABMD}
+setwd("/nfs/turbo/umms-robertwo/agarret/20230503_within-host/10_blast_vanABMD")
+
+all_besthits = data.frame() #make dataframe for all outputs
+filenames = dir(path="/nfs/turbo/umms-robertwo/agarret/20230503_within-host/10_blast_vanABMD", pattern = "*blastoutput_vanABMD.txt") #get filenames in output directory
+
+for(file in filenames) {
+      if (!file.size(file) == 0) { #if blast output file is empty - ignore
+        output <- read.table(file, header=FALSE, sep="\t")
+        colnames(output) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")
+    
+        besthits<-output %>% 
+          mutate(start1 = pmin(sstart, send)) %>% 
+          mutate(end1 = pmax(sstart, send)) %>% 
+          arrange(start1) %>% 
+          group_by(index = cumsum(cummax(lag(end1, default = first(end1))) < start1),sseqid,query) %>% 
+          slice_max(bitscore) %>%   
+          subset(select=-c(index,start1,end1)) %>% 
+          arrange(sseqid) 
+        
+        splitfile <- str_split(file, "_blastoutput", simplify=TRUE)
+        source <- splitfile[,1]
+        besthits["source"] <- source
+        besthits <- besthits[,c("source","query", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send","evalue", "bitscore","qseq","sseq")]
+        all_besthits <- rbind(all_besthits,besthits)
+      }
+} 
+
+write.csv(all_besthits,"/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/data/besthits_vanABMD.csv",row.names = TRUE)
+
+```

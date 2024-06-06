@@ -1,0 +1,414 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggtree)
+library(treeio)
+library(ggnewscale)
+library(RColorBrewer)
+library(grafify)
+library(dplyr)
+
+
+setwd("/nfs/turbo/umms-robertwo/agarret/")
+```
+
+```{r load tree}
+tree <- read.newick("20230503_within-host/13_gubbins/BL00198-1.node_labelled.final_tree.tre")
+tree <-phangorn::midpoint(tree) #midpoint root ree
+tree <-reorder(tree)
+```
+
+
+```{r get mlst}
+mlst <- read.delim("20230801_bacteriocin_blast/data/all_mlst.txt", sep="\t", header=FALSE)
+
+others<-c(names(which(sort(table(mlst$V3))<20)), "-") #only keep sts with more than 20 isolates assigned to them (name everything else 'other')
+mlst$V3 <- plyr::mapvalues(mlst$V3, c(names(which(sort(table(mlst$V3))<20)), "-"), rep("Other", length(others)))
+
+mlst_split <- mlst %>% separate(col="V1", into=c('folder', 'tip.label','file'), sep='/',fill = "left", extra="merge")
+mlst1 <- mlst_split %>% select(c("tip.label","V3"))
+colnames(mlst1) <- c("tip.label","st")
+
+```
+
+
+
+```{r mlst source tips}
+
+tip.labels<-as.data.frame(tree$tip.label) %>%
+  mutate(original.tip.label = tree$tip.label) %>%
+  mutate(tip.label = tree$tip.label)
+
+tip_mlst<-left_join(tip.labels, mlst1, by="tip.label")
+row.names(tip_mlst) <- tip_mlst$original.tip.label
+
+tip_mlst_source<-tip_mlst%>%
+  mutate(node=tip.label)%>%
+  mutate(st=as.factor(st))%>%
+  select(node, st)%>%
+  mutate(source = stringr::str_extract(node, "^.{2}"))
+
+tip_mlst_source[tip_mlst_source$node=="Reference","source"] <- NA #set reference source to NA
+tip_mlst_source$source[tip_mlst_source$source=="PR"] <- "Perirectal (PR)" 
+tip_mlst_source$source[tip_mlst_source$source=="BL"] <- "Blood (BL)" 
+
+
+```
+
+```{r variation}
+ent_var <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_clone_pairids_final.csv", sep="\t", header=TRUE)
+ent_var1 <- ent_var %>% select(c(Clone,pairid))
+colnames(ent_var1) <- c("Clone","enterocinA_pairid")
+#format, if there are less than 5 isolates with that pairid call it other 
+ent_others<-c(names(which(sort(table(ent_var1$enterocinA_pairid))>5))) 
+ent_var1$enterocinA_pairid[!(ent_var1$enterocinA_pairid %in% ent_others)] <- "Other"
+functional_entA <- ent_var %>% filter(pairid ==6|pairid==9|pairid==12|pairid==26|pairid==73|pairid==85) %>% select(Clone,pairid)
+functional_entA$functional_entA <- rep("Bacteriocinogenic",nrow(functional_entA))
+colnames(functional_entA)<-c("Clone","enterocinA_pairid","functional_entA")
+functional_entA <- functional_entA %>% select(c("Clone","functional_entA"))
+
+resistant_entA <- ent_var %>% filter(Clone=="PR21854-1-C1"|Clone=="PR04410-1"|Clone=="PR62316-1-C1"|Clone=="PR53455-1-C1"|Clone=="BL00142-1"|Clone=="BL01620-1"|Clone=="PR03837-1-C1"|Clone=="PR22950-1-C1"|Clone=="PR31971-1-C1"|Clone=="BL02769-1"|Clone=="BL01801-1"|Clone=="BL02556-1"|Clone=="PR02648-1"|Clone=="PR25391-1-C1"|Clone=="PR25657-1-C1"|Clone=="PR46480-1-C1"|Clone=="PR64150-1-C1")%>% select(Clone,pairid)
+resistant_entA$functional_entA <- rep("Resistant non-producer",nrow(resistant_entA))
+colnames(resistant_entA)<-c("Clone","enterocinA_pairid","functional_entA")
+resistant_entA <- resistant_entA %>% select(c("Clone","functional_entA"))
+entA_function <- rbind(functional_entA,resistant_entA)
+
+
+bac_var <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_variation_clone_pairids.csv", sep="\t", header=TRUE)
+bac_var1 <- bac_var %>% select(c(Clone,pairid))
+colnames(bac_var1) <- c("Clone","bac43_pairid")
+#format, if there are less than 5 isolates with that pairid call it other 
+bac_others<-c(names(which(sort(table(bac_var1$bac43_pairid))>5))) 
+bac_var1$bac43_pairid[!(bac_var1$bac43_pairid %in% bac_others)] <- "Other"
+functional_bac <- bac_var %>% filter(!(pairid==84|pairid==57|pairid==9|pairid==36|pairid==73|pairid==48|pairid==56)) %>% filter(!(Clone=="BL01532-1"|Clone=="BL01202-1"|Clone=="PR29013-1-C1"|Clone=="PR39462-1-C1"))%>% select(Clone,pairid)
+functional_bac$functional_bac <- rep("Bacteriocinogenic",nrow(functional_bac))
+functional_bac <- select(c("tip.label","functional_bac"))
+colnames(functional_bac)<-c("Clone","bac43_pairid","functional_bac43")
+functional_bac <- functional_bac %>% select(c("Clone","functional_bac43"))
+
+resistant_bac <- bac_var %>% filter(Clone=="BL01202-1"|Clone=="PR29013-1-C1"|Clone=="PR39462-1-C1"|Clone=="PR27286-1-C1"|Clone=="PR33249-1-C1")%>% select(Clone,pairid)
+resistant_bac$functional_bac <- rep("Resistant non-producer",nrow(resistant_bac))
+colnames(resistant_bac)<-c("Clone","bac43_pairid","functional_bac43")
+resistant_bac <- resistant_bac %>% select(c("Clone","functional_bac43"))
+bac_function <- rbind(functional_bac,resistant_bac)
+
+
+#pairid annotation
+var <- merge(ent_var1,bac_var1, by="Clone",all=TRUE)
+
+var_tips<-var %>%
+  mutate(tip.label=Clone) %>% 
+  mutate(source=Clone) %>%
+  select(-c(Clone))
+
+tips_variation<-left_join(tip.labels, var_tips, by="tip.label")
+tips_variation$enterocinA_pairid[tips_variation$enterocinA_pairid=='Invalid Number'] = 'NA'
+row.names(tips_variation) <- tips_variation$original.tip.label
+tips_variation$bac43_pairid <- as.character(tips_variation$bac43_pairid)
+
+
+#functional annotation
+func <- merge(bac_function,entA_function,by="Clone",all=TRUE)
+func_tips<-func %>%
+  mutate(tip.label=Clone) %>% 
+  mutate(source=Clone) %>%
+  select(-c(Clone))
+tips_func<-left_join(tip.labels, func_tips, by="tip.label")
+row.names(tips_func) <- tips_func$original.tip.label
+
+
+```
+
+
+
+```{r plot mlst source tree -circular}
+ggsim <- ggtree(tree, layout="fan")
+plot_grafify_palette(palette = "fishy")
+
+p <- ggsim + geom_tiplab(size=1) #tree labeled with clone tips 
+#ggsave("20230801_bacteriocin_blast/plots/rectangular_tree_clone_tips.png",plot=last_plot(),device="png",width=40,height=60,limitsize = FALSE)
+
+
+#plot mlst
+p1<-gheatmap(ggsim, 
+            tip_mlst_source[, "st", drop = FALSE], 
+            color=NULL,
+            colnames_angle = 40,
+            width = 0.1,
+            colnames_offset_y = -40,
+            legend_title="MLST") +
+  scale_fill_manual(breaks=c("117","1471","17","18","412","584","664","736","80","Other"),
+                    values=c("#6388b4","#ffae34","#ef6f6a","#8cc2ca","#c3bc3f","#55ad89","#bb7693","#baa094","#767676","white"),na.value="transparent",
+                    name="MLST")
+
+
+p2 <- p1 + new_scale_fill()
+
+#plot source
+# p3 <- gheatmap(p2, 
+#             tip_mlst_source[, "source", drop = FALSE], 
+#             color=NULL,
+#             offset=800,
+#             colnames_angle = 40,
+#             width = 0.1,
+#             colnames_offset_y = -20,
+#             legend_title="Source")+ 
+#   scale_fill_manual(breaks=c("Perirectal (PR)","Blood (BL)","NA"),
+#                     values=c("#5b4734","#efeb60","white"),
+#                     name="Source")+
+#   theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+ 
+#ggsave("20230801_bacteriocin_blast/plots/mlst_source_tree_rectangular.png",plot=last_plot(),device="png",width=30,height=30)
+```
+
+
+
+
+```{r plot enterocin variations tree - rectangular}
+
+p2 <- p1 + new_scale_fill()
+plot_grafify_palette(palette = "safe")
+
+#with mlst data
+p6 <- gheatmap(p2, 
+         tips_variation[, c("enterocinA_pairid"), drop = FALSE],
+         color=NULL,
+         width = 0.1,
+         offset=800,
+         colnames_offset_y = -40,
+         legend_title="Enterocin A PairID") +
+  scale_fill_manual(breaks=c("1","10","11","21","23","24","25","29","3","5","7","Other"),
+                    values=c("#88CCEE","#CC6677","#DDCC77","#332288","#AA4499","#44AA99","#999933","#882255","#661100","#6699CC","#117733","black"),na.value="transparent",
+                    name="Enterocin A PairID")+
+  theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+
+#plot functional data
+p7 <- p6 + new_scale_fill()
+p8 <- gheatmap(p7, 
+         tips_func[, c("functional_entA"), drop = FALSE],
+         color=NULL,
+         width = 0.1,
+         offset=1600,
+         colnames_offset_y = -40,
+         legend_title="Enterocin A Phenotype") +
+        scale_fill_manual(breaks=c("Bacteriocinogenic","Resistant non-producer"),
+                values=c("#F3C300","#875692"),na.value="transparent",
+                name="Enterocin A Phenotype")+
+  theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+
+
+
+ggsave("20230801_bacteriocin_blast/plots/enterocinA_variation_function.png",plot=last_plot(),device="png",width=30,height=30,limitsize = FALSE)
+
+```
+
+```{r plot bac43 variations tree - rectangular}
+
+#with mlst data
+p2 <- p1 + new_scale_fill()
+
+p9 <- gheatmap(p2, 
+         tips_variation[, c("bac43_pairid"), drop = FALSE],
+         color=NULL,
+         width = 0.1,
+         offset=800,
+         colnames_offset_y = -40,
+         legend_title="Bac43 PairID") +
+  scale_fill_manual(breaks=c("1","15","16","2","23","3","5","6","8","Other"),
+                    values=c("#88CCEE","#CC6677","#DDCC77","#332288","#AA4499","#44AA99","#999933","#882255","#661100","black"),na.value="transparent",
+                    name="Enterocin A PairID")+
+  theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+
+#plot functional data
+p10 <- p9 + new_scale_fill()
+p11 <- gheatmap(p10, 
+         tips_func[, c("functional_bac43"), drop = FALSE],
+         color=NULL,
+         width = 0.1,
+         offset=1600,
+         colnames_offset_y = -40,
+         legend_title="Bac43 Phenotype") +
+         scale_fill_manual(breaks=c("Bacteriocinogenic","Resistant non-producer"),
+                      values=c("#F3C300","#875692"),na.value="transparent",
+                      name="Bac43 Phenotype")+
+  theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+
+
+
+#tree_top <- viewClade(p7, MRCA(p7, "PR04781-1-C1", "PR10430-1"))
+
+
+
+ggsave("20230801_bacteriocin_blast/plots/bac43_variation_function.png",plot=last_plot(),device="png",width=30,height=30,limitsize = FALSE)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r plot mlst source tree - circular}
+# ggsim <- ggtree(tree)
+# ggsim_c <- ggtree(tree,layout="fan") #circular tree
+
+# plot_grafify_palette(palette = "fishy")
+
+# #plot mlst
+# p1<-gheatmap(ggsim_c, 
+#             tip_mlst_source[, "st", drop = FALSE], 
+#             colnames_angle = 90,
+#             colnames_offset_y = -30,
+#             font.size = 2,
+#             color=NULL,
+#             width = 0.1,
+#             legend_title="MLST") +
+#   scale_fill_manual(breaks=c("117","1471","17","18","412","584","664","736","80","Other","NA"),
+#                     values=c("#6388b4","#ffae34","#ef6f6a","#8cc2ca","#c3bc3f","#55ad89","#bb7693","#baa094","#767676","white","white"),
+#                     name="MLST")
+
+# p2 <- p1 + new_scale_fill()
+
+# #plot source
+# p3 <- gheatmap(p2, 
+#             tip_mlst_source[, "source", drop = FALSE], 
+#             colnames_angle = 90,
+#             offset=800,
+#             colnames_offset_y = -30,
+#             font.size = 2,
+#             color=NULL,
+#             width = 0.1,
+#             legend_title="Source")+ 
+#   scale_fill_manual(breaks=c("Perirectal (PR)","Blood (BL)","NA"),
+#                     values=c("#5b4734","#efeb60","white"),
+#                     name="Source")+
+#   theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+ 
+
+# ggsave("20230801_bacteriocin_blast/plots/mlst_source_tree.png",plot=last_plot(),device="png",width=30,height=30)
+```
+
+
+```{r bacteriocin clusters tree}
+# cluster_hits_raw<-read.csv("20230801_bacteriocin_blast/data/clustered_hits.csv")
+
+# cluster_hits_edit <- cluster_hits_raw 
+
+# #split enterocin A hits into full and partial 
+# enterocinA_full <- read.csv("20230801_bacteriocin_blast/data/enterocinA_full_ids.csv")
+# enterocinA_full_ids <- enterocinA_full$enterocinA_full
+# cluster_hits_edit1 <- cluster_hits_edit %>% filter(cluster=="clust1")
+# cluster_hits_edit1[cluster_hits_edit1$source %in% enterocinA_full_ids,"cluster"] <-"clust1-1"
+
+# cluster_hits_edit2 <- cluster_hits_edit %>% filter(!cluster=="clust1")
+# cluster_hits_edit3 <-rbind(cluster_hits_edit1,cluster_hits_edit2)
+
+
+# #rename hits
+# cluster_hits_edit3[cluster_hits_edit3$cluster=="clust1","query"] <- "Enterocin A partial"
+# cluster_hits_edit3[cluster_hits_edit3$cluster=="clust1-1","query"] <- "Enterocin A full"
+# cluster_hits_edit3[cluster_hits_edit3$cluster=="clust2","query"] <- "Bac43"
+
+
+# cluster_hits<-cluster_hits_edit3 %>%
+#   select(source, query)%>%
+#   unique() %>%  
+#   mutate(tip.label=source) %>%
+#   pivot_wider(names_from = query, values_from = query) 
+  
+  
+# tips_bacteriocin_cluster<-left_join(tip.labels, cluster_hits, by="tip.label")
+
+# row.names(tips_bacteriocin_cluster) <- tips_bacteriocin_cluster$original.tip.label
+
+```
+
+
+```{r plot bacteriocin hits tree}
+# p4 <- p3 + new_scale_fill()
+# p5 <- gheatmap(p4, 
+#          tips_bacteriocin_cluster[, c("Enterocin A full","Bac43"), drop = FALSE],
+#          color=NULL,
+#          offset=1500,
+#          colnames_angle = 90,
+#          colnames_offset_y = -50,
+#          font.size = 2,
+#          width = 0.2,
+#          legend_title="Closest hit")+
+#   #scale_fill_hue(name="Closest bacteriocin hit", na.value="white")+
+#   scale_fill_manual(breaks=c("Enterocin A full","Bac43"),
+#                     values=c("#bb7693","#55ad89","#c3bc3f","#8cc2ca","#baa094"),
+#                     name="Closest bacteriocin hit",na.value="white")+
+#   geom_treescale(x=0.005,y=-40,fontsize = 3,offset=5)+
+#   ggexpand(.04, direction = -1, side = "v")+
+#   theme(legend.text = element_text(size=30), legend.title = element_text(size=31), legend.key.size = unit(1, 'cm'))
+
+
+# ggsave("20230801_bacteriocin_blast/plots/clust_mlst_source_tree.png",plot=last_plot(),device="png",width=30,height=30)
+```
+
+
+```{r vre tree}
+# tip.labels<-as.data.frame(tree$tip.label) %>%
+#   mutate(original.tip.label = tree$tip.label) %>%
+#   mutate(tip.label = tree$tip.label)
+
+# tip_vre<-left_join(tip.labels, vre_classification , by="tip.label")
+# row.names(tip_vre) <- tip_vre$original.tip.label
+
+# ggsim1 <- ggtree(tree,layout="fan") #circular tree
+
+# p_1 <- gheatmap(ggsim1, 
+#          tip_vre[, c("vancomycin_resistance"), drop = FALSE],
+#             colnames_angle = 90,
+#             colnames_offset_y = -30,
+#             font.size = 2,
+#             color=NULL,
+#             width = 0.1,
+#          legend_title="Vancomycin resistance")+
+#   scale_fill_manual(breaks=c("R"),
+#                     values=c("#baa094"),
+#                     name="Vancomycin resistance", na.value="white")
+```
+
+
+```{r van operon}
+# vanA <- read.csv("/Users/andreagarretto/Dropbox (University of Michigan)/Garretto - bacteriocin search/bacteriocin_blast/data/vanA_operon.csv")
+# colnames(vanA) <- c("X","tip.label","vanR(M97297.1)","vanS(M97297.1)","vanH(M97297.1)","vanA(M97297.1)","vanX(M97297.1)","vanY(M97297.1)","vanZ(M97297.1)")
+# vanA <- vanA %>% select(c("tip.label","vanR(M97297.1)","vanS(M97297.1)","vanH(M97297.1)","vanA(M97297.1)","vanX(M97297.1)","vanY(M97297.1)","vanZ(M97297.1)"))
+
+```
+
+```{r vanA tree}
+# tip_vanA <- left_join(tip.labels,vanA, by="tip.label")
+# row.names(tip_vanA) <- tip_vanA$original.tip.label
+
+
+# p_2 <- p_1 + new_scale_fill()
+
+# p_3<-gheatmap(p_2, 
+#          tip_vanA[, c("vanR(M97297.1)","vanS(M97297.1)","vanH(M97297.1)","vanA(M97297.1)","vanX(M97297.1)","vanY(M97297.1)","vanZ(M97297.1)"), drop = FALSE],
+#          color=NULL,
+#          offset=100,
+#          colnames_angle = 90,
+#          colnames_offset_y = -50,
+#          font.size = 2,
+#          width = 0.6,
+#          legend_title="VanA operon genes")+
+#   scale_fill_manual(breaks=c("vanR(M97297.1)","vanS(M97297.1)","vanH(M97297.1)","vanA(M97297.1)","vanX(M97297.1)","vanY(M97297.1)","vanZ(M97297.1)"),
+#                     values=c("#6388b4","#ffae34","#ef6f6a","#8cc2ca","#c3bc3f","#55ad89","#bb7693"),
+#                     name="VanA operon genes", na.value="white")
+
+```

@@ -1,0 +1,252 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r merge blast hits with isolate, pid, and mlst}
+besthits <- read.csv("./data/first_16to21_besthits.csv")
+isolate_pid_mlst <- read.csv("./data/first_efm_pr_bl_mlst.csv")
+
+hits_pid <-merge(besthits, isolate_pid_mlst, by="source", all.x=TRUE) #left join 
+hits_pid1 <-hits_pid[,c("X.x","pid","source","query","sseqid","pident","length","mismatch","gapopen","qstart","qend","sstart","send","evalue","bitscore","qseq","sseq","cdate","st")] #reorder columns
+```
+
+```{r format sequences as fasta for clustering}
+hits_60 <- hits_pid1 %>% filter(pident>=60) #filter hits to those that have a greater than 60% identity
+fasta <- hits_60 %>% subset(select=c(X.x,pid,source,query,qseq))
+carrot <- rep(">pid",times=nrow(hits_60))
+fasta$car <- carrot
+fasta1 <- fasta[,c("car","pid","X.x","source","query","qseq")]
+fasta1$id <- paste(fasta1$car,fasta1$pid,sep="")
+fasta1$id1 <- paste(fasta1$id,fasta1$X.x,sep=":")
+fasta1$id2 <- paste(fasta1$id1,fasta1$source,sep=":")
+fasta1$id3 <-paste(fasta1$id2,fasta1$query,sep=":")
+
+fasta2 <- fasta1 %>% subset(select=c(id3,qseq))
+fasta2$qseq <- gsub('-', '', fasta2$qseq) #remove - characters in qseq
+
+write.table(fasta2, "./data/first_16to21_besthit_sequences.fa", sep= "\n" ,col.names=FALSE, row.names = FALSE, quote=FALSE)
+
+```
+
+
+```{r assign clusters}
+clusters <- read.table("./data/cdhit_clustered_hits90.fa.clstr", fill=T)
+clust1 <- clusters[2:2394,]
+cluster1 <- rep("clust1",times=nrow(clust1))
+clust1$clust <- cluster1
+
+clust2 <- clusters[2396:3798,]
+cluster2 <- rep("clust2",times=nrow(clust2))
+clust2$clust <- cluster2
+
+clust3 <- clusters[3800:4786,]
+cluster3 <- rep("clust3",times=nrow(clust3))
+clust3$clust <- cluster3
+
+clust4 <- clusters[4788:5250,]
+cluster4 <- rep("clust4",times=nrow(clust4))
+clust4$clust <- cluster4
+
+clust5 <- clusters[5252:5320,]
+cluster5 <- rep("clust5",times=nrow(clust5))
+clust5$clust <- cluster5
+
+clust6 <- clusters[5322:5335,]
+cluster6 <- rep("clust6",times=nrow(clust6))
+clust6$clust <- cluster6
+
+clust7 <- clusters[5337:5349,]
+cluster7 <- rep("clust7",times=nrow(clust7))
+clust7$clust <- cluster7
+
+clust8 <- clusters[5351:5361,]
+cluster8 <- rep("clust8",times=nrow(clust8))
+clust8$clust <- cluster8
+
+clust9 <- clusters[5363:5372,]
+cluster9 <- rep("clust9",times=nrow(clust9))
+clust9$clust <- cluster9
+
+clust10 <- clusters[5374:5378,]
+cluster10 <- rep("clust10",times=nrow(clust10))
+clust10$clust <- cluster10
+
+clust11 <- clusters[5380:5382,]
+cluster11 <- rep("clust11",times=nrow(clust11))
+clust11$clust <- cluster11
+
+clust12 <- clusters[5384:5386,]
+cluster12 <- rep("clust12",times=nrow(clust12))
+clust12$clust <- cluster12
+
+clust13 <- clusters[5388:5390,]
+cluster13 <- rep("clust13",times=nrow(clust13))
+clust13$clust <- cluster13
+
+clust14 <- clusters[5392:5393,]
+cluster14 <- rep("clust14",times=nrow(clust14))
+clust14$clust <- cluster14
+
+clust15 <- clusters[5395:5396,]
+cluster15 <- rep("clust15",times=nrow(clust15))
+clust15$clust <- cluster15
+
+clust16 <- clusters[5398:5399,]
+cluster16 <- rep("clust16",times=nrow(clust16))
+clust16$clust <- cluster16
+
+clust17 <- clusters[5401,]
+cluster17 <- rep("clust17",times=nrow(clust17))
+clust17$clust <- cluster17
+
+clust18 <- clusters[5403,]
+cluster18 <- rep("clust18",times=nrow(clust18))
+clust18$clust <- cluster18
+
+clust19 <- clusters[5405,]
+cluster19 <- rep("clust19",times=nrow(clust19))
+clust19$clust <- cluster19
+
+clust20 <- clusters[5407,]
+cluster20 <- rep("clust20",times=nrow(clust20))
+clust20$clust <- cluster20
+
+clust21 <- clusters[5409,]
+cluster21 <- rep("clust21",times=nrow(clust21))
+clust21$clust <- cluster21
+
+clust22 <- clusters[5411,]
+cluster22 <- rep("clust22",times=nrow(clust22))
+clust22$clust <- cluster22
+
+clust23 <- clusters[5413,]
+cluster23 <- rep("clust23",times=nrow(clust23))
+clust23$clust <- cluster23
+
+clust24 <- clusters[5415,]
+cluster24 <- rep("clust24",times=nrow(clust24))
+clust24$clust <- cluster24
+
+clust25 <- clusters[5417,]
+cluster25 <- rep("clust25",times=nrow(clust25))
+clust25$clust <- cluster25
+
+clust26 <- clusters[5419,]
+cluster26 <- rep("clust26",times=nrow(clust26))
+clust26$clust <- cluster26
+
+clust27 <- clusters[5421,]
+cluster27 <- rep("clust27",times=nrow(clust27))
+clust27$clust <- cluster27
+
+clust28 <- clusters[5423,]
+cluster28 <- rep("clust28",times=nrow(clust28))
+clust28$clust <- cluster28
+
+clust29 <- clusters[5425,]
+cluster29 <- rep("clust29",times=nrow(clust29))
+clust29$clust <- cluster29
+
+clust30 <- clusters[5427,]
+cluster30 <- rep("clust30",times=nrow(clust30))
+clust30$clust <- cluster30
+
+clusters_labeled <- rbind(clust1,clust2,clust3,clust4,clust5,clust6,clust7,clust8,clust9,clust10,clust11,clust12,clust13,clust14,clust15,clust16,clust17,clust18,clust19,clust20,clust21,clust22,clust23,clust24,clust25,clust26,clust27,clust28,clust29,clust30)
+clusters_select <- clusters_labeled %>% subset(select=c(V3,clust))
+
+
+clusters_select1 <- clusters_select %>% separate(col="V3", into=c('pid', 'X.x','source'), sep=':')
+clusters_select2 <- clusters_select1 %>% separate(col="pid", into=c('ext', 'pid'), sep=">pid",fill = "left", extra="merge")
+clusters_select3 <- clusters_select2 %>% subset(select=c(pid,X.x,clust))
+
+clust_hits <- merge(hits_60,clusters_select3,by=c("X.x","pid"))
+clust_hits<-clust_hits[,c("X.x","pid","source","clust","query","sseqid","pident","length","mismatch","gapopen","qstart","qend","sstart","send","evalue","bitscore","qseq","sseq","cdate","st")] #reorder columns
+```
+
+
+```{r reassign clusters of plasmid bacteriocins where structural gene is split across contigs}
+clust_hits1 <- clust_hits
+
+#PR46208-1-C1 hiracin hit - reassign to clust2
+clust_hits1[clust_hits1$X.x==9085,"clust"] <- "clust2"
+clust_hits1[clust_hits1$X.x==9084,"clust"] <- "clust3"
+
+#PR34043-1-C1 hiracin clust15&16 hit - remove one hit and reassign other to clust2
+clust_hits1[clust_hits1$X.x==7255,"clust"] <- "clust2"
+clust_hits1 <- clust_hits1 %>% filter(X.x!=7256)
+
+#PR03545-1-C1 bac32 hit - remove one hit and reassign other to clust8 
+clust_hits1[clust_hits1$X.x==2119,"clust"] <- "clust8"
+clust_hits1 <- clust_hits1 %>% filter(X.x!=2118)
+
+#BL01188-1 ent53B hit - reassign hit to clust4
+clust_hits1[clust_hits1$X.x==237,"clust"] <- "clust4"
+
+#PR09902-1 ent53B hit - reassign hit to clust4
+clust_hits1[clust_hits1$X.x==2994,"clust"] <- "clust4"
+
+#PR00040-1-C1 ent53B hit - remove one hit and reassign other to clust4
+clust_hits1[clust_hits1$X.x==1423,"clust"] <- "clust4"
+clust_hits1 <- clust_hits1 %>% filter(X.x!=1422)
+
+#BL01801-1 enterocin x chain beta hit - reassign to clust13
+clust_hits1[clust_hits1$X.x==493,"clust"] <- "clust13"
+```
+
+```{r reassign cluster numbers so they are sequential}
+clust_hits2 <- clust_hits1
+clust_hits2$cluster <- NA
+
+clust_hits2[clust_hits2$clust=="clust1","cluster"] <- "clust1"
+clust_hits2[clust_hits2$clust=="clust2","cluster"] <- "clust2"
+clust_hits2[clust_hits2$clust=="clust3","cluster"] <- "clust3"
+clust_hits2[clust_hits2$clust=="clust4","cluster"] <- "clust4"
+clust_hits2[clust_hits2$clust=="clust5","cluster"] <- "clust5"
+clust_hits2[clust_hits2$clust=="clust6","cluster"] <- "clust6"
+clust_hits2[clust_hits2$clust=="clust7","cluster"] <- "clust7"
+clust_hits2[clust_hits2$clust=="clust8","cluster"] <- "clust8"
+clust_hits2[clust_hits2$clust=="clust9","cluster"] <- "clust9"
+clust_hits2[clust_hits2$clust=="clust10","cluster"] <- "clust10"
+clust_hits2[clust_hits2$clust=="clust13","cluster"] <- "clust11"
+clust_hits2[clust_hits2$clust=="clust11","cluster"] <- "clust12"
+clust_hits2[clust_hits2$clust=="clust12","cluster"] <- "clust13"
+
+clust_hits2[clust_hits2$clust=="clust14","cluster"] <- "clust14"
+clust_hits2[clust_hits2$clust=="clust16","cluster"] <- "clust15"
+clust_hits2[clust_hits2$clust=="clust17","cluster"] <- "clust16"
+clust_hits2[clust_hits2$clust=="clust18","cluster"] <- "clust17"
+clust_hits2[clust_hits2$clust=="clust21","cluster"] <- "clust18"
+clust_hits2[clust_hits2$clust=="clust23","cluster"] <- "clust19"
+clust_hits2[clust_hits2$clust=="clust25","cluster"] <- "clust20"
+clust_hits2[clust_hits2$clust=="clust28","cluster"] <- "clust21"
+
+
+clust_hits3 <-clust_hits2[,c("X.x","pid","source","cluster","query","sseqid","pident","length","mismatch","gapopen","qstart","qend","sstart","send","evalue","bitscore","qseq","sseq","cdate","st")] #reorder columns
+clust_hits3 <- clust_hits3 %>% distinct()
+
+```
+
+```{r rename queries}
+clust_hits4 <- clust_hits3
+
+clust_hits4[clust_hits4$query=="81.2;Enterocin_A","query"] <- "Enterocin A"
+clust_hits4[clust_hits4$query=="107.2;Hiracin_JM79=15.2;Bac43=22.2;Bacteriocin_T8","query"] <- "Bac43"
+clust_hits4[clust_hits4$query=="272.1;Enterocin_Nkr-5-3B","query"] <- "Enterocin NKR-5-3B"
+clust_hits4[clust_hits4$query=="14.2;Bac32","query"] <- "Bac32"
+clust_hits4[clust_hits4$query=="16.2;Bacteriocin_31","query"] <- "Bac31"
+clust_hits4[clust_hits4$query=="165.1;Pneumolancidin","query"] <- "Pneumolancidin"
+clust_hits4[clust_hits4$query=="75.2;Eenterocin_P-like","query"] <- "Enterocin P-like"
+clust_hits4[clust_hits4$query=="82.2;Enterocin_B","query"] <- "Enterocin B"
+clust_hits4[clust_hits4$query=="86.2;Enterocin_L50a","query"] <- "Enterocin L50a"
+clust_hits4[clust_hits4$query=="87.2;Enterocin_L50b","query"] <- "Enterocin L50b"
+clust_hits4[clust_hits4$query=="91.2;Enterocin_P","query"] <- "Enterocin P"
+clust_hits4[clust_hits4$query=="93.2;Enterocin_Q","query"] <- "Enterocin Q"
+clust_hits4[clust_hits4$query=="95.2;Enterocin_SE-K4","query"] <- "Enterocin SE-K4"
+clust_hits4[clust_hits4$query=="96.2;Enterocin_X_chain_alpha","query"] <- "Enterocin X chain alpha"
+clust_hits4[clust_hits4$query=="97.2;Enterocin_X_chain_beta","query"] <- "Enterocin X chain beta"
+
+
+write.csv(clust_hits4, "./data/clustered_hits.csv")
+```
+

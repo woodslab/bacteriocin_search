@@ -10,7 +10,9 @@ REFERENCE=config["reference_genome"] #for snippy
 rule all:
     input: 
         expand("01_trimmed_shortread/{sample}_01.fq.gz", sample=SAMP),
+        #expand("01_trimmed_longread/{sample}_longread.fq", sample=LONG_SAMP),
         expand("02_assembly/{assembly_sample}/{assembly_sample}_assembly.fasta", assembly_sample=SAMP),
+        #expand("02_hybrid_assembly/{assembly_sample}/{assembly_sample}_assembly.fasta", assembly_sample=SAMP),
         expand("03_indexed_anno_reference/{assembly_sample}/{assembly_sample}.gbk",  assembly_sample=SAMP),
         expand("04_mlst/{assembly_sample}_mlst", assembly_sample=SAMP),
         expand("05_assembly_blast_databases/{assembly_sample}_assembly.fasta", assembly_sample=SAMP),
@@ -51,6 +53,28 @@ rule trimmomatic_pe:
     fastqc {output.r1} -o logs
     fastqc {output.r2} -o logs
     """
+
+#trim long reads
+rule demultiplex_filter_nanopore:
+    input:
+        r3="longread/{longread_sample}_merged_LR.fastq"
+    output:
+        r4="01_trimmed_longread/{longread_sample}_longread.fq",
+        temp=temp("01_trimmed_longread/{longread_sample}_temp.fq")
+    log: log1="logs/{longread_sample}_nanofilt.log", log2="logs/{longread_sample}_porechop.log", log3="logs/{longread_sample}_nanoplot"
+    params:
+        quality=config["Nanofilt"]["quality"],
+        length=config["Nanofilt"]["length"],
+        adapter_threshold=config["Porechop"]["adapter_threshold"]
+    threads: 12
+    conda:
+        "envs/long_read_qc_3.yml"
+    shell:"""
+    touch logs
+    porechop -i {input.r3} -o {output.temp} -t {threads} --adapter_threshold {params.adapter_threshold} 2> {log.log2}
+    cat {output.temp} | NanoFilt -q {params.quality} -l {params.length} --logfile {log.log1} > {output.r4}
+    #NanoPlot --fastq {output.r4} --N50 -o {log.log3}
+    """
     
 # #de novo assembly 
 rule short_read_assembly:
@@ -74,6 +98,28 @@ rule short_read_assembly:
          cp {output.log_file} {log}
     """
 
+#Specify hybrid assembly fasta file as output
+rule long_read_assembly:
+    input:
+        short_read_01="01_trimmed_shortread/{assembly_sample}_01.fq.gz",
+        short_read_02="01_trimmed_shortread/{assembly_sample}_02.fq.gz",
+        long_reads="01_trimmed_longread/{assembly_sample}_longread.fq"
+    output:
+        assembly_file="02_hybrid_assembly/{assembly_sample}/{assembly_sample}_assembly.fasta",
+        log_file="02_hybrid_assembly/{assembly_sample}/{assembly_sample}.log"
+    params:
+        assembly_dir="02_hybrid_assembly/{assembly_sample}",
+        mode=config["Unicycler"]["mode"]
+    threads: 8
+    log: "logs/{assembly_sample}_unicycler.log"
+    conda: "envs/unicycler_4.yml"
+    priority: 100
+    shell:"""
+         unicycler -1 {input.short_read_01} -2 {input.short_read_02} -l {input.long_reads} -o {params.assembly_dir} -t {threads} --mode {params.mode}
+         mv {params.assembly_dir}/unicycler.log {output.log_file}
+         mv {params.assembly_dir}/assembly.fasta {output.assembly_file}
+         cp {output.log_file} {log}
+    """
 
 rule index_reference:
     input:

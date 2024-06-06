@@ -1,0 +1,86 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r bac43 hits}
+besthits <- read.csv("./data/besthits_bac43.csv")
+
+hits <- read.csv("./data/clustered_hits.csv")
+clust2_hits <- hits %>% filter(cluster=="clust2") %>% select(c(source,cluster))
+```
+
+```{r isolates with bacA and bacB}
+bacA_bacB <- besthits %>% group_by(source) %>% filter(any(query=="bacA") && any(query=="bacB"))
+bacA_bacB_ids <- bacA_bacB %>% select(c("source")) %>% distinct()
+
+bacA_bacB_ids$X <- c(1:nrow(bacA_bacB_ids))
+diff <- merge (bacA_bacB_ids,clust2_hits, by="source", all=TRUE)
+```
+
+```{r isolates with only bacB}
+bacB <- besthits %>% group_by(source) %>% filter(!any(query=="bacA") && any(query=="bacB"))
+#there are no isolates with only bacB without bacA
+```
+
+```{r isolates with only bacA}
+bacA <- besthits %>% group_by(source) %>% filter(!any(query=="bacB") && any(query=="bacA"))
+bacA_ids <- bacA %>% select(c("source")) %>% distinct() #92 isolates only have the shortened bacA
+```
+
+```{r}
+find_bacA_short <- besthits %>% filter(query=="bacA") %>% filter(length >= 145) %>% filter(length <=147) 
+bacA_short_ids <- find_bacA_short$source #987 isolates
+bacA_short <- besthits[besthits$source %in% bacA_short_ids,]
+```
+
+```{r}
+no_bacA_bacB <- besthits %>% group_by(source) %>% filter(!any(query=="bacA") && !any(query=="bacB"))
+
+no_bacA_bacB_ids <- no_bacA_bacB %>% select(c("source")) %>% distinct() #917 isolates 
+```
+
+
+
+
+
+Variation anlaysis - want to look only at samples with the full bacA on the plasmid, not hits to the chromosome
+```{r get pDT1 hits to ids with clust2 bacA hit}
+hits <- read.csv("./data/clustered_hits.csv")
+clust2 <- hits %>% filter(cluster=="clust2") %>% select(c(source))
+clust2_ids <- clust2$source
+
+clust2_hits <- besthits[besthits$source %in% clust2_ids,]
+
+#get the seqid of the bacB hit, limit hits to that contig?
+```
+
+
+
+
+```{r variations in plasmid genes}
+gene_hits <- clust2_hits %>% filter (query != "pDT1_AB178871.1") %>% select(c("source","query","sseqid","pident","length","qstart","qend"))
+
+source_query <- gene_hits %>% select(c("source","query")) %>% table() 
+source_query_df <- as.data.frame.matrix(source_query)
+source_query_df1 <- source_query_df[, c("bacA", "bacB","mobC","mobA", "repA","repB")]
+source_query_order <- source_query_df1[with(source_query_df1, order(bacA,bacB,mobC,mobA,repA,repB)),]
+
+
+source_query_unique <- unique(source_query_df1[ , c("bacA", "bacB","mobC","mobA", "repA","repB")]) 
+source_query_unique_order <- source_query_unique[with(source_query_unique, order(bacA,bacB,mobC,mobA,repA,repB)),]
+
+
+source_query_df2 <- rownames_to_column(source_query_df1,"source")
+source_query_dt <- data.table::as.data.table(source_query_df2)
+num_unique <- source_query_dt[, .N, by = c("bacA", "bacB","mobC","mobA", "repA","repB")] 
+num_unique_order <- num_unique[with(num_unique,order(bacA,bacB,mobC,mobA,repA,repB)),]
+```
+
+
+
+```{r}
+bac43_1 <- source_query_df %>% filter(bacA==1 & bacB==1 & repA==0 & repB==1 & mobA==1 & mobC==1) %>% rownames()
+bac43_2 <- source_query_df %>% filter(bacA==2 & bacB==1 & repA==0 & repB==1 & mobA==1 & mobC==1) %>% rownames()
+
+```

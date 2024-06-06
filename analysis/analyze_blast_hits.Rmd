@@ -1,0 +1,23 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r data}
+isolate_pid_mlst <- read.csv("./data/first_efm_pr_bl_mlst.csv")
+hits <- read.csv("./data/clustered_hits.csv")
+
+```
+
+```{r table 1- initial numbers}
+num_isolates <- isolate_pid_mlst %>% subset(select=c(source)) %>% distinct()
+num_patients <- isolate_pid_mlst%>% subset(select=c(pid)) %>% distinct()
+
+num_pr <- num_isolates %>% filter(grepl('PR', source)) %>% distinct()
+num_bl <- num_isolates %>% filter(grepl('BL', source)) %>% distinct()
+
+num_multi_isolates_pid <- isolate_pid_mlst %>% group_by(pid) %>% summarize(source=length(unique(source))) %>% ungroup() %>% filter(source>1) #identify pid with mutiple genomes associated with them 
+multi<- num_multi_isolates_pid$pid #make vector of pids that have multiple genomes
+pid_pr_bl <- isolate_pid_mlst[isolate_pid_mlst$pid %in% multi,] #get pid that have both pr&bl associated with them
+```
+

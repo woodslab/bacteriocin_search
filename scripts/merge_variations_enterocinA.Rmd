@@ -620,10 +620,12 @@ data_test <- data_final4 %>% select(-c("Clone","pairid")) %>% distinct()
 data <- read.csv("14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",sep='\t')
 num_variations <- table(data$pairid) %>% as.data.frame()
 
+
 pairid_list <- data %>% select(-c("Clone")) %>% distinct()
 pairid_first <- pairid_list %>% select("pairid",everything())
 
-p<- data %>% filter(pairid==26|pairid==19|pairid==15)  %>% remove_empty(which = "cols")
+p<- data %>% filter(pairid==6|pairid==9|pairid==12|pairid==26|pairid==73|pairid==85)  %>% remove_empty(which = "cols")
+p<- data %>% filter(pairid==1)  %>% remove_empty(which = "cols")
 
 write.table(pairid_first, "14_enterocinA_variation/summary/enterocinA_variation_pairids_final.csv",row.names=FALSE, sep="\t",quote=FALSE)
 

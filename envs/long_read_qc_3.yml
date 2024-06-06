@@ -1,4 +1,4 @@
-name: long_read_qc_2
+name: long_read_qc_3
 channels:
   - bioconda
   - defaults

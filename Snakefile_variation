@@ -7,298 +7,298 @@ LONG_SAMP=config["long_read_samples"]
 
 rule all:
     input: 
-        # expand("bwa_references/BL02040-1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
-        # expand("bwa_references/PR46485-1-C1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
-        # expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.{extension}", assembly_sample=SAMP, extension=["enterocinA.vcf.gz","subset.rename.enterocinA.vcf.gz","panISa","enterocinA.panISa","enterocinA.ISFinder","bam","sorted.bam","indexed.sorted.bam","enterocinA.sorted.bam","enterocinA.indexed.sorted.bam","enterocinA.coverage","low_coverage_intervals_enterocinA10.bed","merged_low_coverage_intervals_enterocinA10.bed","filter_merged_low_coverage_intervals_enterocinA10.bed"]), 
-        # expand("14_enterocinA_variation/summary/enterocinA_summary.{extension}", extension=["vcf","msa","csv","long.ISFinder.txt","ISFinder.txt","low_coverage_intervals_enterocinA10.txt"]),
+        expand("bwa_references/BL02040-1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
+        expand("bwa_references/PR46485-1-C1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
+        expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.{extension}", assembly_sample=SAMP, extension=["enterocinA.vcf.gz","subset.rename.enterocinA.vcf.gz","panISa","enterocinA.panISa","enterocinA.ISFinder","bam","sorted.bam","indexed.sorted.bam","enterocinA.sorted.bam","enterocinA.indexed.sorted.bam","enterocinA.coverage","low_coverage_intervals_enterocinA10.bed","merged_low_coverage_intervals_enterocinA10.bed","filter_merged_low_coverage_intervals_enterocinA10.bed"]), 
+        expand("14_enterocinA_variation/summary/enterocinA_summary.{extension}", extension=["vcf","msa","csv","long.ISFinder.txt","ISFinder.txt","low_coverage_intervals_enterocinA10.txt"]),
         expand("15_bac43_variation/{assembly_sample}/{assembly_sample}.{extension}", assembly_sample=SAMP, extension=["bam","sorted.bam","indexed.sorted.bam","bac43.vcf.gz","subset.rename.bac43.vcf.gz","panISa","bac43.panISa","bac43.ISFinder","coverage","low_coverage_intervals_bac4310.bed","merged_low_coverage_intervals_bac4310.bed","filter_merged_low_coverage_intervals_bac4310.bed","bac43_plasmid_coverage.txt","bac43_bac_genes_coverage.txt","bac43.mpileup.txt"]),
         expand("15_bac43_variation/summary/bac43_summary.{extension}", extension=["vcf","msa","csv","long.ISFinder.txt","ISFinder.txt","low_coverage_intervals_bac4310.txt","plasmid_coverage.csv","bac_genes_coverage.csv","percent_identity.txt"]),
-        # expand("16_igv_bacteriocin/enterocinA/{assembly_sample}/{assembly_sample}.igvjs_viewer.html", assembly_sample=SAMP),
-        # expand("16_igv_bacteriocin/bac43/{assembly_sample}/{assembly_sample}.igvjs_viewer.html", assembly_sample=SAMP),
-        # expand("17_snpeff/enterocinA/BL02040-1/{file}", file=["sequences.fa.gz","genes.gbk.gz"]),
-        # expand("17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.{extension}",  extension=["enterocinA.ann.vcf","enterocinA.ann.rename.vcf"],assembly_sample=SAMP),
-        # expand("17_snpeff/enterocinA/summary/{extension}",extension=["enterocinA_annotated_merged.vcf","enterocinA_annotated_summary.csv"]),
-        # expand("17_snpeff/bac43/PR46485-1-C1/{file}", file=["sequences.fa.gz","genes.gbk.gz"]),
-        # expand("17_snpeff/bac43/{assembly_sample}/{assembly_sample}.{extension}",  extension=["bac43.ann.vcf","bac43.ann.rename.vcf"],assembly_sample=SAMP),
-        # expand("17_snpeff/bac43/summary/{extension}",extension=["bac43_annotated_merged.vcf","bac43_annotated_summary.csv"]),
+        expand("16_igv_bacteriocin/enterocinA/{assembly_sample}/{assembly_sample}.igvjs_viewer.html", assembly_sample=SAMP),
+        expand("16_igv_bacteriocin/bac43/{assembly_sample}/{assembly_sample}.igvjs_viewer.html", assembly_sample=SAMP),
+        expand("17_snpeff/enterocinA/BL02040-1/{file}", file=["sequences.fa.gz","genes.gbk.gz"]),
+        expand("17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.{extension}",  extension=["enterocinA.ann.vcf","enterocinA.ann.rename.vcf"],assembly_sample=SAMP),
+        expand("17_snpeff/enterocinA/summary/{extension}",extension=["enterocinA_annotated_merged.vcf","enterocinA_annotated_summary.csv"]),
+        expand("17_snpeff/bac43/PR46485-1-C1/{file}", file=["sequences.fa.gz","genes.gbk.gz"]),
+        expand("17_snpeff/bac43/{assembly_sample}/{assembly_sample}.{extension}",  extension=["bac43.ann.vcf","bac43.ann.rename.vcf"],assembly_sample=SAMP),
+        expand("17_snpeff/bac43/summary/{extension}",extension=["bac43_annotated_merged.vcf","bac43_annotated_summary.csv"]),
 
-#define variation of hits to the enterocin A gene cluster
-#1. map short reads to long and short read hybrid assembly of sample with full enterocin A
-#2. use freebayes to identify snps
-#3. subset vcf file to enterocin A region (contig 2, 245835-256713)
-#4. rename vcf header so snps can be merged
-#5. merge snps
-# convert final vcf file to csv
-#6. identify any insertion elements
-#7 identify areas of low coverage depth (i.e. potential deletions)
-#8. annotate snps using snpeff
+define variation of hits to the enterocin A gene cluster
+1. map short reads to long and short read hybrid assembly of sample with full enterocin A
+2. use freebayes to identify snps
+3. subset vcf file to enterocin A region (contig 2, 245835-256713)
+4. rename vcf header so snps can be merged
+5. merge snps
+convert final vcf file to csv
+6. identify any insertion elements
+7 identify areas of low coverage depth (i.e. potential deletions)
+8. annotate snps using snpeff
 
-# rule index_reference:
-#     input:
-#         reference1 = "bwa_references/BL02040-1_assembly.fasta",
-#         reference2 = "bwa_references/PR46485-1-C1_assembly.fasta",
-#     output:
-#         indexed1 = expand("bwa_references/BL02040-1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
-#         indexed2 = expand("bwa_references/PR46485-1-C1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
-#     conda: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bwa index {input.reference1} > {output.indexed1}
-#     bwa index {input.reference2} > {output.indexed2}
-#     """
+rule index_reference:
+    input:
+        reference1 = "bwa_references/BL02040-1_assembly.fasta",
+        reference2 = "bwa_references/PR46485-1-C1_assembly.fasta",
+    output:
+        indexed1 = expand("bwa_references/BL02040-1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
+        indexed2 = expand("bwa_references/PR46485-1-C1_assembly.fasta.{extension}", extension=["amb","ann","bwt","pac","sa"]),
+    conda: "envs/index_mapping_packed.sif"
+    shell:"""
+    bwa index {input.reference1} > {output.indexed1}
+    bwa index {input.reference2} > {output.indexed2}
+    """
 
-# rule map_shortreads_to_enterocinA:
-#     input:
-#         reference = "bwa_references/BL02040-1_assembly.fasta",
-#         r1 ="01_trimmed_shortread/{assembly_sample}_01.fq.gz",
-#         r2 ="01_trimmed_shortread/{assembly_sample}_02.fq.gz"
-#     output:
-#         bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.bam",
-#         sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#         indexed_sorted_bam="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.indexed.sorted.bam",
-#         enterocinA_sorted = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.sorted.bam",
-#         enterocinA_indexed = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.indexed.sorted.bam",
-#     conda: "envs/index_mapping_packed.sif"
-#     threads: 8
-#     shell:"""
-#     bwa mem -t {threads} {input.reference} {input.r1} {input.r2} > {output.bam_file}
-#     samtools sort {output.bam_file} > {output.sorted_bam_file}
-#     samtools index {output.sorted_bam_file} > {output.indexed_sorted_bam}
+rule map_shortreads_to_enterocinA:
+    input:
+        reference = "bwa_references/BL02040-1_assembly.fasta",
+        r1 ="01_trimmed_shortread/{assembly_sample}_01.fq.gz",
+        r2 ="01_trimmed_shortread/{assembly_sample}_02.fq.gz"
+    output:
+        bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.bam",
+        sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+        indexed_sorted_bam="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.indexed.sorted.bam",
+        enterocinA_sorted = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.sorted.bam",
+        enterocinA_indexed = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.indexed.sorted.bam",
+    conda: "envs/index_mapping_packed.sif"
+    threads: 8
+    shell:"""
+    bwa mem -t {threads} {input.reference} {input.r1} {input.r2} > {output.bam_file}
+    samtools sort {output.bam_file} > {output.sorted_bam_file}
+    samtools index {output.sorted_bam_file} > {output.indexed_sorted_bam}
 
-#     samtools view -b -h {output.sorted_bam_file} 2:245800-256750 > {output.enterocinA_sorted}
-#     samtools index {output.enterocinA_sorted} > {output.enterocinA_indexed}
-#     """
+    samtools view -b -h {output.sorted_bam_file} 2:245800-256750 > {output.enterocinA_sorted}
+    samtools index {output.enterocinA_sorted} > {output.enterocinA_indexed}
+    """
 
-# rule enterocinA_freebayes:
-#     input:
-#         reference="bwa_references/BL02040-1_assembly.fasta",
-#         sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#     output:
-#         vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf",
-#     params:
-#         min_base_quality=10,
-#         min_alternate_fraction=0.5,
-#         ploidy=1,
-#     conda: "envs/freebayes.yml"
-#     threads:12
-#     shell:"""
-#     freebayes -f {input.reference} {input.sorted_bam_file}  --min-base-quality {params.min_base_quality}  --min-alternate-fraction {params.min_alternate_fraction} -p {params.ploidy} > {output.vcf_file}
-#     """
+rule enterocinA_freebayes:
+    input:
+        reference="bwa_references/BL02040-1_assembly.fasta",
+        sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+    output:
+        vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf",
+    params:
+        min_base_quality=10,
+        min_alternate_fraction=0.5,
+        ploidy=1,
+    conda: "envs/freebayes.yml"
+    threads:12
+    shell:"""
+    freebayes -f {input.reference} {input.sorted_bam_file}  --min-base-quality {params.min_base_quality}  --min-alternate-fraction {params.min_alternate_fraction} -p {params.ploidy} > {output.vcf_file}
+    """
 
-# rule subset_enterocinA_vcf:
-#     input:
-#         vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf"
-#     output:
-#         vcf_gz = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf.gz",
-#         vcf= "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf.gz"
-#     params:
-#         sample="{assembly_sample}",
-#         tempsubset="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.enterocinA.vcf",
-#         tempsubsetrename="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf"
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bgzip {input.vcf_file}
-#     bcftools index {input.vcf_file}.gz
-#     bcftools filter {input.vcf_file}.gz -r 2:245800-256750 > {params.tempsubset}
-#     bcftools reheader -s <(echo -e "{params.sample}") -o {params.tempsubsetrename} {params.tempsubset}
-#     bgzip {params.tempsubsetrename}
-#     bcftools index {output.vcf}
-#     """
+rule subset_enterocinA_vcf:
+    input:
+        vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf"
+    output:
+        vcf_gz = "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.vcf.gz",
+        vcf= "14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf.gz"
+    params:
+        sample="{assembly_sample}",
+        tempsubset="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.enterocinA.vcf",
+        tempsubsetrename="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf"
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bgzip {input.vcf_file}
+    bcftools index {input.vcf_file}.gz
+    bcftools filter {input.vcf_file}.gz -r 2:245800-256750 > {params.tempsubset}
+    bcftools reheader -s <(echo -e "{params.sample}") -o {params.tempsubsetrename} {params.tempsubset}
+    bgzip {params.tempsubsetrename}
+    bcftools index {output.vcf}
+    """
 
-# rule merge_enterocinA_snps:
-#     input:
-#         vcfs=expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf.gz",assembly_sample=SAMP),
-#         reference = "bwa_references/BL02040-1_assembly.fasta"
-#     output:
-#         vcf ="14_enterocinA_variation/summary/enterocinA_summary.vcf",
-#         msa="14_enterocinA_variation/summary/enterocinA_summary.msa",
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bcftools merge {input.vcfs} > {output.vcf}
-#     cp {output.vcf} {output.vcf}.1
-#     bgzip {output.vcf}.1
-#     bcftools index {output.vcf}.1.gz 
-#     bcftools consensus -f {input.reference} {output.vcf}.1.gz > {output.msa}
-#     """
+rule merge_enterocinA_snps:
+    input:
+        vcfs=expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.rename.enterocinA.vcf.gz",assembly_sample=SAMP),
+        reference = "bwa_references/BL02040-1_assembly.fasta"
+    output:
+        vcf ="14_enterocinA_variation/summary/enterocinA_summary.vcf",
+        msa="14_enterocinA_variation/summary/enterocinA_summary.msa",
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bcftools merge {input.vcfs} > {output.vcf}
+    cp {output.vcf} {output.vcf}.1
+    bgzip {output.vcf}.1
+    bcftools index {output.vcf}.1.gz 
+    bcftools consensus -f {input.reference} {output.vcf}.1.gz > {output.msa}
+    """
 
-# rule panisa_enterocinA:
-#     input:
-#         sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#     output:
-#         panISa="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.panISa",
-#         panISa_filter="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.panISa",
-#         ISFinder_filter="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.ISFinder",
-#     conda: "panisa"
-#     shell:"""
-#     panISa.py {input.sorted_bam_file} > {output.panISa}
-#     awk -F "\t" 'NR==1; $1==2 && ((245800<=$2 && $2<=256750) || (245800<=$5 && $5<=256750))' {output.panISa} > {output.panISa_filter}
-#     python3 scripts/ISFinder_search.py {output.panISa_filter} > {output.ISFinder_filter}
-#     """
+rule panisa_enterocinA:
+    input:
+        sorted_bam_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+    output:
+        panISa="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.panISa",
+        panISa_filter="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.panISa",
+        ISFinder_filter="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.ISFinder",
+    conda: "panisa"
+    shell:"""
+    panISa.py {input.sorted_bam_file} > {output.panISa}
+    awk -F "\t" 'NR==1; $1==2 && ((245800<=$2 && $2<=256750) || (245800<=$5 && $5<=256750))' {output.panISa} > {output.panISa_filter}
+    python3 scripts/ISFinder_search.py {output.panISa_filter} > {output.ISFinder_filter}
+    """
 
-# rule long_summarize_panISa_enterocinA:
-#     input:
-#         expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.ISFinder", assembly_sample=SAMP)
-#     output:
-#         outfile_long = "14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",
-#     run:
-#         import pandas as pd
-#         with open(output.outfile_long, 'a') as ofile:
-#             ofile.write('Clone'+'\t'+'Sample'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\t'+'Potential_sequence'+'\t'+'Potential_IS'+'\t'+'Alignment'+'\n')
-#             for file in input:
-#                 clone = file.split('/')[-1].split('.')[0]
-#                 with open(file) as infile:
-#                     next(infile)
-#                     for line in infile:
-#                         ofile.write(clone+'\t'+line)
-
-
-# rule short_summarize_panISa_enterocinA:
-#     input: 
-#         infile ="14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt"
-#     output:
-#         outfile = "14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt"
-#     container: "envs/R.sif"
-#     shell: """
-#     Rscript scripts/ISFinder_summary_short.R {input.infile} {output.outfile}
-#     """
+rule long_summarize_panISa_enterocinA:
+    input:
+        expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.enterocinA.ISFinder", assembly_sample=SAMP)
+    output:
+        outfile_long = "14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",
+    run:
+        import pandas as pd
+        with open(output.outfile_long, 'a') as ofile:
+            ofile.write('Clone'+'\t'+'Sample'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\t'+'Potential_sequence'+'\t'+'Potential_IS'+'\t'+'Alignment'+'\n')
+            for file in input:
+                clone = file.split('/')[-1].split('.')[0]
+                with open(file) as infile:
+                    next(infile)
+                    for line in infile:
+                        ofile.write(clone+'\t'+line)
 
 
-# rule multi_vcf_to_csv_enterocinA:
-#     input:
-#         vcf = "14_enterocinA_variation/summary/enterocinA_summary.vcf"
-#     output:
-#         csv = "14_enterocinA_variation/summary/enterocinA_summary.csv"
-#     run:
-#         import vcf
-#         vcf_file = input.vcf
-#         output_csv = output.csv
+rule short_summarize_panISa_enterocinA:
+    input: 
+        infile ="14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt"
+    output:
+        outfile = "14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt"
+    container: "envs/R.sif"
+    shell: """
+    Rscript scripts/ISFinder_summary_short.R {input.infile} {output.outfile}
+    """
 
-#         vcf_reader = vcf.Reader(open(vcf_file, 'r')) #open VCF file
-#         sample_names = vcf_reader.samples #extract sample names
 
-#         # Open CSV file for writing
-#         with open(output_csv, 'w') as csv_file:
-#             csv_file.write("CHROM;POS;ID;REF;ALT;QUAL;FILTER;FORMAT;" + ";".join(sample_names) + "\n") #write header
+rule multi_vcf_to_csv_enterocinA:
+    input:
+        vcf = "14_enterocinA_variation/summary/enterocinA_summary.vcf"
+    output:
+        csv = "14_enterocinA_variation/summary/enterocinA_summary.csv"
+    run:
+        import vcf
+        vcf_file = input.vcf
+        output_csv = output.csv
 
-#             for record in vcf_reader: #write data
-#                 csv_file.write(
-#                     f"{record.CHROM};{record.POS};{record.ID};{record.REF};{record.ALT[0] if record.ALT else '.'};{record.QUAL or '.'};{record.FILTER[0] if record.FILTER else '.'};DP:RO:AO:QA;"
-#                 )
+        vcf_reader = vcf.Reader(open(vcf_file, 'r')) #open VCF file
+        sample_names = vcf_reader.samples #extract sample names
 
-#                 for sample in record.samples: #write genotype information for each sample
-#                     if sample.data.GT:
+        # Open CSV file for writing
+        with open(output_csv, 'w') as csv_file:
+            csv_file.write("CHROM;POS;ID;REF;ALT;QUAL;FILTER;FORMAT;" + ";".join(sample_names) + "\n") #write header
 
-#                         csv_file.write(f"{sample.data.DP}:{sample.data.RO}:{sample.data.AO}:{sample.data.QA};")
+            for record in vcf_reader: #write data
+                csv_file.write(
+                    f"{record.CHROM};{record.POS};{record.ID};{record.REF};{record.ALT[0] if record.ALT else '.'};{record.QUAL or '.'};{record.FILTER[0] if record.FILTER else '.'};DP:RO:AO:QA;"
+                )
+
+                for sample in record.samples: #write genotype information for each sample
+                    if sample.data.GT:
+
+                        csv_file.write(f"{sample.data.DP}:{sample.data.RO}:{sample.data.AO}:{sample.data.QA};")
                         
-#                 csv_file.write("\n")
-#         print("Conversion completed.")
+                csv_file.write("\n")
+        print("Conversion completed.")
 
 
-# #identify areas of large deletions
-# rule enterocinA_identify_low_coverage_intervals:
-#     input:
-#         bam="14_enterocinA_variation/{sample}/{sample}.enterocinA.sorted.bam",
-#     output:
-#         coverage="14_enterocinA_variation/{sample}/{sample}.enterocinA.coverage",
-#         high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.low_coverage_intervals_enterocinA10.bed",
-#         merged_high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.merged_low_coverage_intervals_enterocinA10.bed",
-#         filter_merged_high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.filter_merged_low_coverage_intervals_enterocinA10.bed"
-#     container: "envs/index_mapping_packed.sif"
-#     params:
-#         coverage_threshold=0.10
-#     shell:"""
-#         # Calculate average coverage
-#         avg_cov=$(samtools depth {input.bam} | awk '{{sum += $3}} END {{print sum/NR}}')
+#identify areas of large deletions
+rule enterocinA_identify_low_coverage_intervals:
+    input:
+        bam="14_enterocinA_variation/{sample}/{sample}.enterocinA.sorted.bam",
+    output:
+        coverage="14_enterocinA_variation/{sample}/{sample}.enterocinA.coverage",
+        high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.low_coverage_intervals_enterocinA10.bed",
+        merged_high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.merged_low_coverage_intervals_enterocinA10.bed",
+        filter_merged_high_coverage_intervals="14_enterocinA_variation/{sample}/{sample}.filter_merged_low_coverage_intervals_enterocinA10.bed"
+    container: "envs/index_mapping_packed.sif"
+    params:
+        coverage_threshold=0.10
+    shell:"""
+        # Calculate average coverage
+        avg_cov=$(samtools depth {input.bam} | awk '{{sum += $3}} END {{print sum/NR}}')
         
-#         # output coverage coverage
-#         samtools depth -aa {input.bam} > {output.coverage}
+        # output coverage coverage
+        samtools depth -aa {input.bam} > {output.coverage}
         
-#         # Identify low coverage intervals
-#         samtools depth -aa {input.bam} | awk -v avg=$avg_cov -v threshold={params.coverage_threshold} '{{if ($3 < (threshold * avg)) print $1"\t"$2"\t"$2+1"\t"$3}}' > {output.high_coverage_intervals}
+        # Identify low coverage intervals
+        samtools depth -aa {input.bam} | awk -v avg=$avg_cov -v threshold={params.coverage_threshold} '{{if ($3 < (threshold * avg)) print $1"\t"$2"\t"$2+1"\t"$3}}' > {output.high_coverage_intervals}
 
-#         # Merge adjacent intervals (optional)
-#         bedtools merge -i {output.high_coverage_intervals} > {output.merged_high_coverage_intervals}
+        # Merge adjacent intervals (optional)
+        bedtools merge -i {output.high_coverage_intervals} > {output.merged_high_coverage_intervals}
         
-#         # Filter to enterocin A location
-#         awk -F "\t" '$1==2 && ((245800<=$2 && $2<=256750) || (245800<=$3 && $3<=256750))' {output.merged_high_coverage_intervals} > {output.filter_merged_high_coverage_intervals}
-#         """
+        # Filter to enterocin A location
+        awk -F "\t" '$1==2 && ((245800<=$2 && $2<=256750) || (245800<=$3 && $3<=256750))' {output.merged_high_coverage_intervals} > {output.filter_merged_high_coverage_intervals}
+        """
 
 
-# rule summarize_enterocinA_low_coverage_intervals:
-#     input:
-#         expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.filter_merged_low_coverage_intervals_enterocinA10.bed", assembly_sample=SAMP)
-#     output:
-#         outfile= "14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals_enterocinA10.txt",
-#     run:
-#         import pandas as pd
-#         with open(output.outfile, 'a') as ofile:
-#             ofile.write('Clone'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\n')
-#             for file in input:
-#                 clone = file.split('/')[-1].split('.')[0]
-#                 with open(file) as infile:
-#                     for line in infile:
-#                         ofile.write(clone+'\t'+line)
-
-
-
-# #merge snps, IS elements, and low coverage regions
-# rule merge_enterocinA_variations:
-#     input:
-#         snps: "14_enterocinA_variation/summary/enterocinA_summary.csv",
-#         low_coverage: "14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals.txt",
-#         is_long: "14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",
-#         is_short: "14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt",
-#     output:
-#         merged: "14_enterocinA_variation/summary/enterocinA_summary.all_variations.txt"
-#     container: "envs/R.sif"
-#     shell: """
-#     Rscript scripts/merge_variations.R {input.snps} {input.low_coverage} {input.is_long} {input.is_short} {output.merged}
-#     """  
+rule summarize_enterocinA_low_coverage_intervals:
+    input:
+        expand("14_enterocinA_variation/{assembly_sample}/{assembly_sample}.filter_merged_low_coverage_intervals_enterocinA10.bed", assembly_sample=SAMP)
+    output:
+        outfile= "14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals_enterocinA10.txt",
+    run:
+        import pandas as pd
+        with open(output.outfile, 'a') as ofile:
+            ofile.write('Clone'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\n')
+            for file in input:
+                clone = file.split('/')[-1].split('.')[0]
+                with open(file) as infile:
+                    for line in infile:
+                        ofile.write(clone+'\t'+line)
 
 
 
-#annotate variations
-# rule create_snpEff_reference:
-#     input:
-#         configfile="config/snpEff.config",
-#         reference_fasta="bwa_references/BL02040-1_assembly.fasta",
-#         reference_genbank="bwa_references/BL02040-1.gbk",
-#     output:
-#         ref_fa_gz ="17_snpeff/enterocinA/BL02040-1/sequences.fa.gz",
-#         ref_gbk_gz ="17_snpeff/enterocinA/BL02040-1/genes.gbk.gz",
-#     threads: 8 
-#     container:
-#         "envs/snpeff.sif"
-#     log:
-#         "logs/snpeff/BL02040-1.log"
-#     shell:"""
-#         echo 'BL02040-1.genome : BL02040-1'>>{input.configfile}
-#         cp {input.reference_fasta} 17_snpeff/enterocinA/BL02040-1/sequences.fa
-#         gzip 17_snpeff/enterocinA/BL02040-1/sequences.fa > {output.ref_fa_gz}
-#         cp {input.reference_genbank} 17_snpeff/enterocinA/BL02040-1/genes.gbk
-#         gzip 17_snpeff/enterocinA/BL02040-1/genes.gbk > {output.ref_gbk_gz}
-#         snpEff build -c {input.configfile} -dataDir "../17_snpeff/enterocinA/" -genbank -v BL02040-1 > snpEff.stdout 2> snpEff.stderr
-#         """
+#merge snps, IS elements, and low coverage regions
+rule merge_enterocinA_variations:
+    input:
+        snps: "14_enterocinA_variation/summary/enterocinA_summary.csv",
+        low_coverage: "14_enterocinA_variation/summary/enterocinA_summary.low_coverage_intervals.txt",
+        is_long: "14_enterocinA_variation/summary/enterocinA_summary.long.ISFinder.txt",
+        is_short: "14_enterocinA_variation/summary/enterocinA_summary.ISFinder.txt",
+    output:
+        merged: "14_enterocinA_variation/summary/enterocinA_summary.all_variations.txt"
+    container: "envs/R.sif"
+    shell: """
+    Rscript scripts/merge_variations.R {input.snps} {input.low_coverage} {input.is_long} {input.is_short} {output.merged}
+    """  
 
 
 
-# rule annotate_snps_snpeff:
-#     input:
-#         ref_fa ="17_snpeff/enterocinA/BL02040-1/sequences.fa.gz",
-#         ref_gbk ="17_snpeff/enterocinA/BL02040-1/genes.gbk.gz",
-#         configfile = "config/snpEff.config",
-#         #data_directory =directory("17_snpeff/enterocinA/{assembly_sample}/"),
-#         vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.enterocinA.vcf",
-#     output:
-#         calls="17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.enterocinA.ann.vcf",   # annotated calls (vcf, bcf, or vcf.gz)
+annotate variations
+rule create_snpEff_reference:
+    input:
+        configfile="config/snpEff.config",
+        reference_fasta="bwa_references/BL02040-1_assembly.fasta",
+        reference_genbank="bwa_references/BL02040-1.gbk",
+    output:
+        ref_fa_gz ="17_snpeff/enterocinA/BL02040-1/sequences.fa.gz",
+        ref_gbk_gz ="17_snpeff/enterocinA/BL02040-1/genes.gbk.gz",
+    threads: 8 
+    container:
+        "envs/snpeff.sif"
+    log:
+        "logs/snpeff/BL02040-1.log"
+    shell:"""
+        echo 'BL02040-1.genome : BL02040-1'>>{input.configfile}
+        cp {input.reference_fasta} 17_snpeff/enterocinA/BL02040-1/sequences.fa
+        gzip 17_snpeff/enterocinA/BL02040-1/sequences.fa > {output.ref_fa_gz}
+        cp {input.reference_genbank} 17_snpeff/enterocinA/BL02040-1/genes.gbk
+        gzip 17_snpeff/enterocinA/BL02040-1/genes.gbk > {output.ref_gbk_gz}
+        snpEff build -c {input.configfile} -dataDir "../17_snpeff/enterocinA/" -genbank -v BL02040-1 > snpEff.stdout 2> snpEff.stderr
+        """
 
-#     threads: 8
-#     log:
-#         "logs/snpeff/{assembly_sample}.log"
-#     container:
-#         "envs/snpeff.sif"
-#     shell:"""
-#         snpEff -dataDir "../17_snpeff/enterocinA/"  -c {input.configfile} BL02040-1 {input.vcf_file} -ud 100 > {output.calls}
-#     """
+
+
+rule annotate_snps_snpeff:
+    input:
+        ref_fa ="17_snpeff/enterocinA/BL02040-1/sequences.fa.gz",
+        ref_gbk ="17_snpeff/enterocinA/BL02040-1/genes.gbk.gz",
+        configfile = "config/snpEff.config",
+        #data_directory =directory("17_snpeff/enterocinA/{assembly_sample}/"),
+        vcf_file="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.subset.enterocinA.vcf",
+    output:
+        calls="17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.enterocinA.ann.vcf",   # annotated calls (vcf, bcf, or vcf.gz)
+
+    threads: 8
+    log:
+        "logs/snpeff/{assembly_sample}.log"
+    container:
+        "envs/snpeff.sif"
+    shell:"""
+        snpEff -dataDir "../17_snpeff/enterocinA/"  -c {input.configfile} BL02040-1 {input.vcf_file} -ud 100 > {output.calls}
+    """
 
 rule rename_enterocinA_annotated_snps:
     input:
@@ -337,25 +337,25 @@ rule summarize_enterocinA_annotated_snps:
 
 
 
-# rule enterocinA_igv_report:
-#     input:
-#         fasta="bwa_references/BL02040-1_assembly.fasta",
-#         vcf="17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.enterocinA.ann.vcf",
-#         # any number of additional optional tracks, see igv-reports manual
-#         bam="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#         gff="bwa_references/BL02040-1.gff",
-#     output:
-#         igvjs_viewer = "16_igv_bacteriocin/enterocinA/{assembly_sample}/{assembly_sample}.igvjs_viewer.html"
-#     threads: 8
-#     params:
-#         extra=""  # optional params, see igv-reports manual
-#     container: "envs/igv_reports.sif"
-#     log:
-#         "logs/igv_report/{assembly_sample}.log"
-#     shell:"""
+rule enterocinA_igv_report:
+    input:
+        fasta="bwa_references/BL02040-1_assembly.fasta",
+        vcf="17_snpeff/enterocinA/{assembly_sample}/{assembly_sample}.enterocinA.ann.vcf",
+        # any number of additional optional tracks, see igv-reports manual
+        bam="14_enterocinA_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+        gff="bwa_references/BL02040-1.gff",
+    output:
+        igvjs_viewer = "16_igv_bacteriocin/enterocinA/{assembly_sample}/{assembly_sample}.igvjs_viewer.html"
+    threads: 8
+    params:
+        extra=""  # optional params, see igv-reports manual
+    container: "envs/igv_reports.sif"
+    log:
+        "logs/igv_report/{assembly_sample}.log"
+    shell:"""
         
-#         create_report {input.vcf} {input.fasta} --info-columns ANN --tracks {input.bam} --output {output.igvjs_viewer} --flanking 25000
-#     """
+        create_report {input.vcf} {input.fasta} --info-columns ANN --tracks {input.bam} --output {output.igvjs_viewer} --flanking 25000
+    """
 
 
 
@@ -379,27 +379,27 @@ rule summarize_enterocinA_annotated_snps:
 
 #define variation of hits to the bac43 encoding plasmid
 
-# rule map_shortreads_to_bac43:
-#     input:
-#         reference = "bwa_references/PR46485-1-C1_assembly.fasta",
-#         r1="01_trimmed_shortread/{assembly_sample}_01.fq.gz",
-#         r2="01_trimmed_shortread/{assembly_sample}_02.fq.gz"
-#     output:
-#         bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bam",
-#         sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#         indexed_sorted_bam="15_bac43_variation/{assembly_sample}/{assembly_sample}.indexed.sorted.bam",
-#         bac43_sorted = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.sorted.bam",
-#         bac43_indexed = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.indexed.sorted.bam",
-#     container: "envs/index_mapping_packed.sif"
-#     threads: 8
-#     shell:"""
-#     bwa mem -t {threads} {input.reference} {input.r1} {input.r2} > {output.bam_file}
-#     samtools sort {output.bam_file} > {output.sorted_bam_file}
-#     samtools index {output.sorted_bam_file} > {output.indexed_sorted_bam}
+rule map_shortreads_to_bac43:
+    input:
+        reference = "bwa_references/PR46485-1-C1_assembly.fasta",
+        r1="01_trimmed_shortread/{assembly_sample}_01.fq.gz",
+        r2="01_trimmed_shortread/{assembly_sample}_02.fq.gz"
+    output:
+        bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bam",
+        sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+        indexed_sorted_bam="15_bac43_variation/{assembly_sample}/{assembly_sample}.indexed.sorted.bam",
+        bac43_sorted = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.sorted.bam",
+        bac43_indexed = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.indexed.sorted.bam",
+    container: "envs/index_mapping_packed.sif"
+    threads: 8
+    shell:"""
+    bwa mem -t {threads} {input.reference} {input.r1} {input.r2} > {output.bam_file}
+    samtools sort {output.bam_file} > {output.sorted_bam_file}
+    samtools index {output.sorted_bam_file} > {output.indexed_sorted_bam}
 
-#     samtools view -b -h {output.sorted_bam_file} 7 > {output.bac43_sorted}
-#     samtools index {output.bac43_sorted} > {output.bac43_indexed}
-#     """
+    samtools view -b -h {output.sorted_bam_file} 7 > {output.bac43_sorted}
+    samtools index {output.bac43_sorted} > {output.bac43_indexed}
+    """
 
 #get coverage across plasmid  - 
 #since it's a plasmid there could be a lot of similarities to other plasmids (i.e. mob and rep genes)
@@ -447,207 +447,207 @@ rule summarize_bac43_coverage:
 
 
 # #identify variants
-# rule bac43_freebayes:
-#     input:
-#         reference= "bwa_references/PR46485-1-C1_assembly.fasta",
-#         sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#     output:
-#         vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf",
-#     params:
-#         min_base_quality=10,
-#         min_alternate_fraction=0.5,
-#         ploidy=1,
-#     conda: "envs/freebayes.yml"
-#     threads:12
-#     shell:"""
-#     freebayes -f {input.reference} {input.sorted_bam_file}  --min-base-quality {params.min_base_quality}  --min-alternate-fraction {params.min_alternate_fraction} -p {params.ploidy} > {output.vcf_file}  
-#     """
+rule bac43_freebayes:
+    input:
+        reference= "bwa_references/PR46485-1-C1_assembly.fasta",
+        sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+    output:
+        vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf",
+    params:
+        min_base_quality=10,
+        min_alternate_fraction=0.5,
+        ploidy=1,
+    conda: "envs/freebayes.yml"
+    threads:12
+    shell:"""
+    freebayes -f {input.reference} {input.sorted_bam_file}  --min-base-quality {params.min_base_quality}  --min-alternate-fraction {params.min_alternate_fraction} -p {params.ploidy} > {output.vcf_file}  
+    """
 
-# rule subset_bac43_vcf:
-#     input:
-#         vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf"
-#     output:
-#         vcf_gz = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf.gz",
-#         vcf= "15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf.gz"
-#     params:
-#         sample="{assembly_sample}",
-#         tempsubset="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.bac43.vcf",
-#         tempsubsetrename="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf"
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bgzip {input.vcf_file}
-#     bcftools index {input.vcf_file}.gz
-#     bcftools filter {input.vcf_file}.gz -r 7 > {params.tempsubset}
-#     bcftools reheader -s <(echo -e "{params.sample}") -o {params.tempsubsetrename} {params.tempsubset}
-#     bgzip {params.tempsubsetrename}
-#     bcftools index {output.vcf}
-#     """
-
-
-# rule merge_bac43_snps:
-#     input:
-#         vcfs=expand("15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf.gz",assembly_sample=SAMP),
-#         reference = "bwa_references/PR46485-1-C1_assembly.fasta"
-#     output:
-#         vcf ="15_bac43_variation/summary/bac43_summary.vcf",
-#         msa="15_bac43_variation/summary/bac43_summary.msa",
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bcftools merge 15_bac43_variation/*/*.subset.rename.bac43.vcf.gz > {output.vcf}
-#     cp {output.vcf} {output.vcf}.1
-#     bgzip {output.vcf}.1
-#     bcftools index {output.vcf}.1.gz 
-#     bcftools consensus -f {input.reference} {output.vcf}.1.gz > {output.msa}
-#     """
+rule subset_bac43_vcf:
+    input:
+        vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf"
+    output:
+        vcf_gz = "15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.vcf.gz",
+        vcf= "15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf.gz"
+    params:
+        sample="{assembly_sample}",
+        tempsubset="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.bac43.vcf",
+        tempsubsetrename="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf"
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bgzip {input.vcf_file}
+    bcftools index {input.vcf_file}.gz
+    bcftools filter {input.vcf_file}.gz -r 7 > {params.tempsubset}
+    bcftools reheader -s <(echo -e "{params.sample}") -o {params.tempsubsetrename} {params.tempsubset}
+    bgzip {params.tempsubsetrename}
+    bcftools index {output.vcf}
+    """
 
 
+rule merge_bac43_snps:
+    input:
+        vcfs=expand("15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.rename.bac43.vcf.gz",assembly_sample=SAMP),
+        reference = "bwa_references/PR46485-1-C1_assembly.fasta"
+    output:
+        vcf ="15_bac43_variation/summary/bac43_summary.vcf",
+        msa="15_bac43_variation/summary/bac43_summary.msa",
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bcftools merge 15_bac43_variation/*/*.subset.rename.bac43.vcf.gz > {output.vcf}
+    cp {output.vcf} {output.vcf}.1
+    bgzip {output.vcf}.1
+    bcftools index {output.vcf}.1.gz 
+    bcftools consensus -f {input.reference} {output.vcf}.1.gz > {output.msa}
+    """
 
-# rule multi_vcf_to_csv_bac43:
-#     input:
-#         vcf = "15_bac43_variation/summary/bac43_summary.vcf"
-#     output:
-#         csv = "15_bac43_variation/summary/bac43_summary.csv"
-#     run:
-#         import vcf
-#         vcf_file = input.vcf
-#         output_csv = output.csv
 
-#         vcf_reader = vcf.Reader(open(vcf_file, 'r')) #open VCF file
-#         sample_names = vcf_reader.samples #extract sample names
 
-#         # Open CSV file for writing
-#         with open(output_csv, 'w') as csv_file:
-#             csv_file.write("CHROM;POS;ID;REF;ALT;QUAL;FILTER;FORMAT;" + ";".join(sample_names) + "\n") #write header
+rule multi_vcf_to_csv_bac43:
+    input:
+        vcf = "15_bac43_variation/summary/bac43_summary.vcf"
+    output:
+        csv = "15_bac43_variation/summary/bac43_summary.csv"
+    run:
+        import vcf
+        vcf_file = input.vcf
+        output_csv = output.csv
 
-#             for record in vcf_reader: #write data
-#                 csv_file.write(
-#                     f"{record.CHROM};{record.POS};{record.ID};{record.REF};{record.ALT[0] if record.ALT else '.'};{record.QUAL or '.'};{record.FILTER[0] if record.FILTER else '.'};DP:RO:AO:QA;"
-#                 )
+        vcf_reader = vcf.Reader(open(vcf_file, 'r')) #open VCF file
+        sample_names = vcf_reader.samples #extract sample names
 
-#                 for sample in record.samples: #write genotype information for each sample
-#                     if sample.data.GT:
+        # Open CSV file for writing
+        with open(output_csv, 'w') as csv_file:
+            csv_file.write("CHROM;POS;ID;REF;ALT;QUAL;FILTER;FORMAT;" + ";".join(sample_names) + "\n") #write header
 
-#                         csv_file.write(f"{sample.data.DP}:{sample.data.RO}:{sample.data.AO}:{sample.data.QA};")
+            for record in vcf_reader: #write data
+                csv_file.write(
+                    f"{record.CHROM};{record.POS};{record.ID};{record.REF};{record.ALT[0] if record.ALT else '.'};{record.QUAL or '.'};{record.FILTER[0] if record.FILTER else '.'};DP:RO:AO:QA;"
+                )
+
+                for sample in record.samples: #write genotype information for each sample
+                    if sample.data.GT:
+
+                        csv_file.write(f"{sample.data.DP}:{sample.data.RO}:{sample.data.AO}:{sample.data.QA};")
                         
-#                 csv_file.write("\n")
-#         print("Conversion completed.")
+                csv_file.write("\n")
+        print("Conversion completed.")
 
 
-# #annotate variations
-# rule create_snpEff_reference_bac43:
-#     input:
-#         configfile="config/snpEff_bac43.config",
-#         reference_fasta="bwa_references/PR46485-1-C1_assembly.fasta",
-#         reference_genbank="bwa_references/PR46485-1-C1.gbk",
-#     output:
-#         ref_fa_gz ="17_snpeff/bac43/PR46485-1-C1/sequences.fa.gz",
-#         ref_gbk_gz ="17_snpeff/bac43/PR46485-1-C1/genes.gbk.gz",
-#     threads: 8 
-#     container: "envs/snpeff.sif"
-#     log:
-#         "logs/snpeff/PR46485-1-C1.log"
-#     shell:"""
-#         echo 'PR46485-1-C1.genome : PR46485-1-C1'>>{input.configfile}
-#         cp {input.reference_fasta} 17_snpeff/bac43/PR46485-1-C1/sequences.fa
-#         gzip 17_snpeff/bac43/PR46485-1-C1/sequences.fa > {output.ref_fa_gz}
-#         cp {input.reference_genbank} 17_snpeff/bac43/PR46485-1-C1/genes.gbk
-#         gzip 17_snpeff/bac43/PR46485-1-C1/genes.gbk > {output.ref_gbk_gz}
-#         snpEff build -c {input.configfile} -dataDir "../17_snpeff/bac43/" -genbank -v PR46485-1-C1 > snpEff.stdout 2> snpEff.stderr
-#         """
+#annotate variations
+rule create_snpEff_reference_bac43:
+    input:
+        configfile="config/snpEff_bac43.config",
+        reference_fasta="bwa_references/PR46485-1-C1_assembly.fasta",
+        reference_genbank="bwa_references/PR46485-1-C1.gbk",
+    output:
+        ref_fa_gz ="17_snpeff/bac43/PR46485-1-C1/sequences.fa.gz",
+        ref_gbk_gz ="17_snpeff/bac43/PR46485-1-C1/genes.gbk.gz",
+    threads: 8 
+    container: "envs/snpeff.sif"
+    log:
+        "logs/snpeff/PR46485-1-C1.log"
+    shell:"""
+        echo 'PR46485-1-C1.genome : PR46485-1-C1'>>{input.configfile}
+        cp {input.reference_fasta} 17_snpeff/bac43/PR46485-1-C1/sequences.fa
+        gzip 17_snpeff/bac43/PR46485-1-C1/sequences.fa > {output.ref_fa_gz}
+        cp {input.reference_genbank} 17_snpeff/bac43/PR46485-1-C1/genes.gbk
+        gzip 17_snpeff/bac43/PR46485-1-C1/genes.gbk > {output.ref_gbk_gz}
+        snpEff build -c {input.configfile} -dataDir "../17_snpeff/bac43/" -genbank -v PR46485-1-C1 > snpEff.stdout 2> snpEff.stderr
+        """
 
 
-# rule annotate_snps_snpeff_bac43:
-#     input:
-#         ref_fa ="17_snpeff/bac43/PR46485-1-C1/sequences.fa.gz",
-#         ref_gbk ="17_snpeff/bac43/PR46485-1-C1/genes.gbk.gz",
-#         configfile = "config/snpEff_bac43.config",
-#         vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.bac43.vcf",
-#     output:
-#         calls="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",   # annotated calls (vcf, bcf, or vcf.gz)
-#     threads: 8
-#     log:
-#         "logs/snpeff/{assembly_sample}.log"
-#     container: "envs/snpeff.sif"
-#     shell:"""
-#         snpEff -dataDir "../17_snpeff/bac43/"  -c {input.configfile} PR46485-1-C1 {input.vcf_file} -ud 100 > {output.calls}
-#     """
+rule annotate_snps_snpeff_bac43:
+    input:
+        ref_fa ="17_snpeff/bac43/PR46485-1-C1/sequences.fa.gz",
+        ref_gbk ="17_snpeff/bac43/PR46485-1-C1/genes.gbk.gz",
+        configfile = "config/snpEff_bac43.config",
+        vcf_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.subset.bac43.vcf",
+    output:
+        calls="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",   # annotated calls (vcf, bcf, or vcf.gz)
+    threads: 8
+    log:
+        "logs/snpeff/{assembly_sample}.log"
+    container: "envs/snpeff.sif"
+    shell:"""
+        snpEff -dataDir "../17_snpeff/bac43/"  -c {input.configfile} PR46485-1-C1 {input.vcf_file} -ud 100 > {output.calls}
+    """
 
-# rule rename_bac43_annotated_snps:
-#     input:
-#         vcf="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",
-#     output:
-#         vcf_rename="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.rename.vcf",
-#     params:
-#         sample="{assembly_sample}",
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bcftools reheader {input.vcf} -s <(echo -e "{params.sample}") -o {output.vcf_rename}
-#     cp {output.vcf_rename} {output.vcf_rename}.1
-#     bgzip {output.vcf_rename}.1
-#     bcftools index {output.vcf_rename}.1.gz
-#     """
+rule rename_bac43_annotated_snps:
+    input:
+        vcf="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",
+    output:
+        vcf_rename="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.rename.vcf",
+    params:
+        sample="{assembly_sample}",
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bcftools reheader {input.vcf} -s <(echo -e "{params.sample}") -o {output.vcf_rename}
+    cp {output.vcf_rename} {output.vcf_rename}.1
+    bgzip {output.vcf_rename}.1
+    bcftools index {output.vcf_rename}.1.gz
+    """
 
-# rule merge_bac43_annotated_snps:
-#     input:
-#         vcfs=expand("17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.rename.vcf.1.gz",assembly_sample=SAMP),
-#     output:
-#         vcf_summary ="17_snpeff/bac43/summary/bac43_annotated_merged.vcf",
-#     container: "envs/index_mapping_packed.sif"
-#     shell:"""
-#     bcftools merge {input.vcfs} > {output.vcf_summary}
-#     """
+rule merge_bac43_annotated_snps:
+    input:
+        vcfs=expand("17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.rename.vcf.1.gz",assembly_sample=SAMP),
+    output:
+        vcf_summary ="17_snpeff/bac43/summary/bac43_annotated_merged.vcf",
+    container: "envs/index_mapping_packed.sif"
+    shell:"""
+    bcftools merge {input.vcfs} > {output.vcf_summary}
+    """
 
-# rule summarize_bac43_annotated_snps:
-#     input:
-#         vcf_summary ="17_snpeff/bac43/summary/bac43_annotated_merged.vcf",
-#     output:
-#         csv = "17_snpeff/bac43/summary/bac43_annotated_summary.csv"
-#     shell:"""
-#     python3 scripts/vcf_csv.py {input.vcf_summary} {output.csv}
-#     """
+rule summarize_bac43_annotated_snps:
+    input:
+        vcf_summary ="17_snpeff/bac43/summary/bac43_annotated_merged.vcf",
+    output:
+        csv = "17_snpeff/bac43/summary/bac43_annotated_summary.csv"
+    shell:"""
+    python3 scripts/vcf_csv.py {input.vcf_summary} {output.csv}
+    """
 
 
-# #identify IS elements
-# rule panisa_bac43:
-#     input:
-#         sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#     output:
-#         panISa="15_bac43_variation/{assembly_sample}/{assembly_sample}.panISa",
-#         panISa_filter="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.panISa",
-#         ISFinder_filter="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.ISFinder",
-#     conda: "panisa"
-#     shell:"""
-#     panISa.py {input.sorted_bam_file} > {output.panISa}
-#     awk -F "\t" 'NR==1; $1==7' {output.panISa} > {output.panISa_filter}
-#     python3 scripts/ISFinder_search.py {output.panISa_filter} > {output.ISFinder_filter}
-#     """
+#identify IS elements
+rule panisa_bac43:
+    input:
+        sorted_bam_file="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+    output:
+        panISa="15_bac43_variation/{assembly_sample}/{assembly_sample}.panISa",
+        panISa_filter="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.panISa",
+        ISFinder_filter="15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.ISFinder",
+    conda: "panisa"
+    shell:"""
+    panISa.py {input.sorted_bam_file} > {output.panISa}
+    awk -F "\t" 'NR==1; $1==7' {output.panISa} > {output.panISa_filter}
+    python3 scripts/ISFinder_search.py {output.panISa_filter} > {output.ISFinder_filter}
+    """
 
-# rule long_summarize_panISa_bac43:
-#     input:
-#         expand("15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.ISFinder", assembly_sample=SAMP)
-#     output:
-#         outfile_long = "15_bac43_variation/summary/bac43_summary.long.ISFinder.txt",
-#     run:
-#         import pandas as pd
-#         with open(output.outfile_long, 'a') as ofile:
-#             ofile.write('Clone'+'\t'+'Sample'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\t'+'Potential_sequence'+'\t'+'Potential_IS'+'\t'+'Alignment'+'\n')
-#             for file in input:
-#                 clone = file.split('/')[-1].split('.')[0]
-#                 with open(file) as infile:
-#                     next(infile)
-#                     for line in infile:
-#                         ofile.write(clone+'\t'+line)
+rule long_summarize_panISa_bac43:
+    input:
+        expand("15_bac43_variation/{assembly_sample}/{assembly_sample}.bac43.ISFinder", assembly_sample=SAMP)
+    output:
+        outfile_long = "15_bac43_variation/summary/bac43_summary.long.ISFinder.txt",
+    run:
+        import pandas as pd
+        with open(output.outfile_long, 'a') as ofile:
+            ofile.write('Clone'+'\t'+'Sample'+'\t'+'Chromosome'+'\t'+'Start_Position'+'\t'+'Stop_Position'+'\t'+'Potential_sequence'+'\t'+'Potential_IS'+'\t'+'Alignment'+'\n')
+            for file in input:
+                clone = file.split('/')[-1].split('.')[0]
+                with open(file) as infile:
+                    next(infile)
+                    for line in infile:
+                        ofile.write(clone+'\t'+line)
         
 
-# rule short_summarize_panISa_bac43:
-#     input: 
-#         infile ="15_bac43_variation/summary/bac43_summary.long.ISFinder.txt"
-#     output:
-#         outfile = "15_bac43_variation/summary/bac43_summary.ISFinder.txt"
-#     container: "envs/R.sif"
-#     shell: """
-#     Rscript scripts/ISFinder_summary_short.R {input.infile} {output.outfile}
-#     """
+rule short_summarize_panISa_bac43:
+    input: 
+        infile ="15_bac43_variation/summary/bac43_summary.long.ISFinder.txt"
+    output:
+        outfile = "15_bac43_variation/summary/bac43_summary.ISFinder.txt"
+    container: "envs/R.sif"
+    shell: """
+    Rscript scripts/ISFinder_summary_short.R {input.infile} {output.outfile}
+    """
 
 
 #identify areas of large deletions
@@ -697,22 +697,22 @@ rule summarize_bac43_low_coverage_intervals:
 
 
 
-# rule bac43_igv_report:
-#     input:
-#         fasta="bwa_references/PR46485-1-C1_assembly.fasta",
-#         vcf="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",
-#         # any number of additional optional tracks, see igv-reports manual
-#         bam="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
-#         gff="bwa_references/PR46485-1-C1.gff",
-#     output:
-#         igvjs_viewer = "16_igv_bacteriocin/bac43/{assembly_sample}/{assembly_sample}.igvjs_viewer.html"
-#     threads: 8
-#     params:
-#         extra=""  # optional params, see igv-reports manual
-#     container: "envs/igv_reports.sif"
-#     log:
-#         "logs/igv_report/{assembly_sample}.log"
-#     shell:"""
+rule bac43_igv_report:
+    input:
+        fasta="bwa_references/PR46485-1-C1_assembly.fasta",
+        vcf="17_snpeff/bac43/{assembly_sample}/{assembly_sample}.bac43.ann.vcf",
+        # any number of additional optional tracks, see igv-reports manual
+        bam="15_bac43_variation/{assembly_sample}/{assembly_sample}.sorted.bam",
+        gff="bwa_references/PR46485-1-C1.gff",
+    output:
+        igvjs_viewer = "16_igv_bacteriocin/bac43/{assembly_sample}/{assembly_sample}.igvjs_viewer.html"
+    threads: 8
+    params:
+        extra=""  # optional params, see igv-reports manual
+    container: "envs/igv_reports.sif"
+    log:
+        "logs/igv_report/{assembly_sample}.log"
+    shell:"""
         
-#         create_report {input.vcf} {input.fasta} --info-columns ANN --tracks {input.bam} --output {output.igvjs_viewer} --flanking 15000
-#     """
+        create_report {input.vcf} {input.fasta} --info-columns ANN --tracks {input.bam} --output {output.igvjs_viewer} --flanking 15000
+    """

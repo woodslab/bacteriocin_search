@@ -1,0 +1,34 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+```{r enterocinA hits}
+besthits <- read.csv("./data/besthits_enterocinA.csv")
+
+```
+
+```{r variations in gene cluster}
+gene_hits <- besthits %>% filter (query != "AF099088.1") %>% select(c("source","query","sseqid","pident","length","qstart","qend"))
+
+source_query <- gene_hits %>% select(c("source","query")) %>% table() 
+source_query_df <- as.data.frame.matrix(source_query)
+source_query_df1 <- source_query_df[, c("entA", "entI", "entF", "entK","entR","entT","entD")]
+source_query_order <- source_query_df1[with(source_query_df1, order(entA,entI,entF,entK,entR,entT,entD)),]
+
+
+source_query_unique <- unique(source_query_df1[ , c("entA", "entI","entF","entK","entR","entT","entD")]) 
+source_query_unique_order <- source_query_unique[with(source_query_unique, order(entA,entI,entF,entK,entR,entT,entD)),]
+
+
+source_query_df2 <- rownames_to_column(source_query_df1,"source")
+source_query_dt <- data.table::as.data.table(source_query_df2)
+num_unique <- source_query_dt[, .N, by = c("entA", "entI", "entF", "entK","entR","entT","entD")] 
+num_unique_order <- num_unique[with(num_unique,order(entA,entI,entF,entK,entR,entT,entD)),]
+```
+
+```{r full enterocinA}
+enterocinA_full <- source_query_df %>% filter(entA==1 & entI==1 & entF==1 & entK==1 & entR==1 & entT==1 & entD==1) %>% rownames()
+enterocinA_full_df <- as.data.frame(enterocinA_full)
+write.csv(enterocinA_full_df, "./data/enterocinA_full_ids.csv")
+```

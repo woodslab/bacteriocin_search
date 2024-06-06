@@ -1,0 +1,51 @@
+snippy_core fails when using all 2428 samples
+    error - 
+        Warning: No SNPs were detected so there is nothing to output.
+        ERROR: Could not run: snp-sites -c -o 12_core_genome/BL00198-1.aln 12_core_genome/BL00198-1.full.aln
+Create a new list of samples based on the percent of aligned bases to total length (3,057,123)
+Enter in snakemake config file as SAMP_CORE
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(data.table)
+
+setwd("/nfs/turbo/umms-robertwo/agarret/20230801_bacteriocin_blast/")
+```
+
+
+```{r}
+log <- read.table("./snippy_core_troubleshoot/BL00198-1.txt", header=TRUE, sep='\t')
+log1 <- log %>% select(c(ID,ALIGNED))
+
+#50% alignment would be 1528561 aligned
+log50 <- log1 %>% filter(ALIGNED >= 1528561) %>% filter(ID != 'Reference') %>% select(ID)
+log50$id_quote<-paste0('"', log50$ID,'"')
+log50_str <- paste0(log50$id_quote, collapse=",")
+write(log50_str, "./snippy_core_troubleshoot/50perc_aligned_samples.txt")
+
+#30% alignment would be 917137
+log30 <- log1 %>% filter(ALIGNED >= 917137) %>% filter(ID != 'Reference') %>% select(ID)
+log30$id_quote<-paste0('"', log30$ID,'"')
+log30_str <- paste0(log30$id_quote, collapse=",")
+write(log30_str, "./snippy_core_troubleshoot/30perc_aligned_samples.txt")
+
+#10% alignment would be 305712
+log10 <- log1 %>% filter(ALIGNED >= 305712) %>% filter(ID != 'Reference') %>% select(ID)
+log10$id_quote<-paste0('"', log10$ID,'"')
+log10_str <- paste0(log10$id_quote, collapse=",")
+write(log10_str, "./snippy_core_troubleshoot/10perc_aligned_samples.txt")
+
+
+
+#250,000 aligned
+log_250<- log1 %>% filter(ALIGNED >= 250000) %>% filter(ID != 'Reference') %>% select(ID)
+log_250$id_quote<-paste0('"', log_250$ID,'"')
+log_250_str <- paste0(log_250$id_quote, collapse=",")
+write(log_250_str, "./snippy_core_troubleshoot/250thou_aligned_samples.txt")
+
+
+
+
+```
+
+

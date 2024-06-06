@@ -1,0 +1,274 @@
+```{r packages message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(trackViewer)
+library(janitor)
+library(reshape)
+
+
+setwd("/nfs/turbo/umms-robertwo/agarret/")
+```
+
+```{r remove X from colnames}
+destroyX = function(es) {
+  f = es
+  for (col in c(1:ncol(f))){ #for each column in dataframe
+    if (startsWith(colnames(f)[col], "X") == TRUE)  { #if starts with 'X' ..
+      colnames(f)[col] <- substr(colnames(f)[col], 2, 100) #get rid of it
+    }
+  }
+  assign(deparse(substitute(es)), f, inherits = TRUE) #assign corrected data to original name
+}
+```
+
+
+
+```{r entA functional and predicted functional}
+entA <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",sep='\t')
+entA_func <- entA %>% filter(pairid==3|pairid==4|pairid==6|pairid==9|pairid==12|pairid==15|pairid==26|pairid==49|pairid==73|pairid==85|pairid==1|pairid==7|pairid==19|pairid==27|pairid==44|pairid==74|pairid==75|pairid==86|pairid==95) %>% remove_empty(which = "cols") %>% select(-c("Clone"))%>% select(-contains("."))
+
+entA_func1 <- destroyX(entA_func)
+entA_melt <- melt(entA_func1 ,  id.vars = 'pairid', variable.name = 'var') %>% drop_na()
+
+entA_melt <- entA_melt %>% add_row(pairid = 15, variable = "246306", value= "ISE")
+entA_melt <- entA_melt %>% add_row(pairid = 49, variable = "246248", value= "ISE")
+entA_melt <- entA_melt %>% add_row(pairid = 44, variable = "246282", value= "ISE")
+entA_melt <- entA_melt %>% add_row(pairid = 7, variable = "248570", value= "ISE")
+
+entA_melt1 <- entA_melt[!grepl('IS', entA_melt$variable),]
+entA_melt1[c('Annotation', 'Full_annotation')] <- str_split_fixed(entA_melt1$value, '_', 2)
+entA_melt1$variable <- as.numeric(entA_melt1$variable)
+entA_melt1$pairid <- as.character(entA_melt1$pairid)
+
+deletions <- entA  %>% filter(pairid==3|pairid==4|pairid==6|pairid==9|pairid==12|pairid==15|pairid==26|pairid==49|pairid==73|pairid==85|pairid==1|pairid==7|pairid==19|pairid==27|pairid==44|pairid==74|pairid==75|pairid==86|pairid==95) %>% remove_empty(which = "cols") %>% select(-c("Clone")) %>% select(contains(c(".","pairid")))
+deletions <- destroyX(deletions)
+deletions1 <- melt(deletions ,  id.vars = 'pairid', variable.name = 'var') %>% drop_na()
+deletions1[c('Start', 'Stop')] <- str_split_fixed(deletions1$value, '-', 2)
+deletions2 <- deletions1 %>% select(c(pairid,Start))
+deletions2$Annotation <- rep("deletion",nrow(deletions2))
+colnames(deletions2) <- c("pairid","variable","Annotation")
+deletions2$pairid <- as.character(deletions2$pairid)
+deletions2$variable <- as.numeric(deletions2$variable)
+
+
+#remove deletion points that match variant
+remove <- deletions2[deletions2$pairid==3 & deletions2$variable==256197 & deletions2$Annotation=="deletion", ]
+remove1 <- deletions2[deletions2$pairid==7 & deletions2$variable==256197 & deletions2$Annotation=="deletion", ]
+remove2 <- deletions2[deletions2$pairid==15 & deletions2$variable==256091 & deletions2$Annotation=="deletion", ]
+remove3 <- deletions2[deletions2$pairid==44 & deletions2$variable==247011 & deletions2$Annotation=="deletion", ]
+#remove4 <- deletions2[deletions2$pairid==44 & deletions2$variable==247314 & deletions2$Annotation=="deletion", ]
+remove5 <- deletions2[deletions2$pairid==49 & deletions2$variable==256197 & deletions2$Annotation=="deletion", ]
+remove6 <- deletions2[deletions2$pairid==73 & deletions2$variable==256197 & deletions2$Annotation=="deletion", ]
+remove7 <- deletions2[deletions2$pairid==85 & deletions2$variable==256197 & deletions2$Annotation=="deletion", ]
+
+
+remove_all <- rbind(remove,remove1,remove2,remove3, remove5,remove6,remove7) #remove2,remove3,remove4
+deletions_final <- anti_join(deletions2,remove_all)
+
+entA_melt2 <- merge(entA_melt1,deletions_final,all=TRUE)
+
+entA_melt3 <- entA_melt2 %>% select(c(pairid,variable,Annotation))
+entA_melt3$pairid <- factor(entA_melt3$pairid, levels=c("6","9","12","26","73","85","3","4","15","49","1","7","19","27","44","74","75","86","95"))
+
+
+entA_melt3$shape[entA_melt3$Annotation == "ISE"] <- "diamond"
+entA_melt3$shape[entA_melt3$Annotation != "ISE"] <- "circle"
+
+
+ggplot(entA_melt3, aes(y=pairid,x=variable,color=Annotation,shape=shape)) +
+  geom_point(size=5) +
+  xlab("Position") + 
+  scale_x_continuous(breaks = seq(246000, 257000, by = 500)) +
+  theme_classic() +
+  scale_y_discrete("PairID",labels =c("4"="PairID 4","6"="PairID 6","9"="PairID 9","12"="PairID 12","15"="PairID 15","26"="PairID 26","49"="PairID 49","3"="PairID 3","73"="PairID 73","85"="PairID 85","1"="PairID 1","7"="PairID 7","19"="PairID 19","27"="PairID 27","44"="PairID 44","74"="PairID 74","75"="PairID 75","86"="PairID 86","95"="PairID 95"),
+  expand = expansion(mult = c(.1, 1))) +
+  scale_color_manual(labels=c("synonymous"="Synonymous variant","missense"="Missense variant","intergenic"="Intergenic variant","upstream"="Upstream gene variant","downstream"="Downstream gene variant","frameshift"="Frameshit mutation","ISE"="Insertion element","stop"="Stop gained","deletion"="Deletion"),
+                    values=c("#6388b4","#ffae34","#ef6f6a","#8cc2ca","#c3bc3f","#55ad89","#bb7693","#baa094","#767676"),
+                    name="Variation") +
+  theme(panel.grid.major.y = element_line(),
+        panel.grid.minor.y = element_line(),
+        text = element_text(size = 20),
+        axis.text.x=element_text(angle=45,hjust=1),
+        legend.text = element_text(size=20), legend.title = element_text(size=20),
+        legend.position = c(0.5, .75)) +
+  guides(colour = guide_legend(override.aes = list(size=5)))
+
+
+
+ggsave("20230801_bacteriocin_blast/plots/enterocinA_map_variation2.png",plot=last_plot(),width=20,device="png")
+
+````
+
+
+```{r bac43}
+bac43 <- read.csv("20230503_within-host/15_bac43_variation/summary/bac43_variation_summary.csv",sep='\t')
+bac_fun <- bac43 %>% filter(pairid==14|pairid==57|pairid==65|pairid==82|pairid==84|pairid==3|pairid==9|pairid==36|pairid==73|pairid==2|pairid==48|pairid==56) %>% remove_empty(which = "cols") %>% select(-c("Clone")) %>% select(-c("blast_bac43")) %>% select(-contains("."))
+
+bac_fun1 <- destroyX(bac_fun)
+bac_melt <- melt(bac_fun1 ,  id.vars = 'pairid', variable.name = 'var') %>% drop_na()
+
+bac_melt <- bac_melt %>% add_row(pairid = 48, variable = "441", value= "ISE")
+bac_melt <- bac_melt %>% add_row(pairid = 84, variable = "2242", value= "ISE")
+bac_melt <- bac_melt %>% add_row(pairid = 57, variable = "2213", value= "ISE")
+bac_melt <- bac_melt %>% add_row(pairid = 14, variable = "2532", value= "ISE")
+bac_melt <- bac_melt %>% add_row(pairid = 36, variable = "2103", value= "ISE")
+
+bac_melt1 <- bac_melt[!grepl('IS', bac_melt$variable),]
+
+
+bac_melt1[c('Annotation', 'Full_annotation')] <- str_split_fixed(bac_melt1$value, '_', 2)
+bac_melt1$variable <- as.numeric(bac_melt1$variable)
+bac_melt1$pairid <- as.character(bac_melt1$pairid)
+bac_melt2 <- bac_melt1 %>% select(c(pairid,variable,Annotation))
+
+deletions <- bac43 %>% filter(pairid==14|pairid==57|pairid==65|pairid==82|pairid==84|pairid==3|pairid==9|pairid==36|pairid==73|pairid==2|pairid==48|pairid==56) %>% remove_empty(which = "cols") %>% select(-c("Clone")) %>% select(contains(c(".","pairid")))
+deletions <- destroyX(deletions)
+deletions1 <- melt(deletions ,  id.vars = 'pairid', variable.name = 'var') %>% drop_na()
+deletions1[c('Start', 'Stop')] <- str_split_fixed(deletions1$value, '-', 2)
+deletions2 <- deletions1 %>% select(c(pairid,Start))
+deletions2$Annotation <- rep("deletion",nrow(deletions2))
+colnames(deletions2) <- c("pairid","variable","Annotation")
+deletions2$pairid <- as.character(deletions2$pairid)
+deletions2$variable <- as.numeric(deletions2$variable)
+
+#remove deletion points that match variant
+remove <- deletions2[deletions2$pairid==65 & deletions2$variable==1958 & deletions2$Annotation=="deletion", ]
+remove1 <- deletions2[deletions2$pairid==73 & deletions2$variable==2919 & deletions2$Annotation=="deletion", ]
+remove2 <- deletions2[deletions2$pairid==9 & deletions2$variable==2919 & deletions2$Annotation=="deletion", ]
+remove_all <- rbind(remove,remove1,remove2)
+remove_all$pairid <- as.character(remove_all$pairid)
+
+deletions_final <- anti_join(deletions2,remove_all)
+
+bac_melt4 <- merge(bac_melt2,deletions_final,all=TRUE)
+
+bac_melt4$shape[bac_melt4$Annotation == "ISE"] <- "diamond"
+bac_melt4$shape[bac_melt4$Annotation != "ISE"] <- "circle"
+bac_melt4$variable <- as.numeric(bac_melt4$variable)
+bac_melt4$pairid <- as.character(bac_melt4$pairid)
+bac_melt4$pairid <- factor(bac_melt4$pairid, levels=c("9","73","84","57","36","48","56","14","65","82","2","3"))
+
+ggplot(bac_melt4, aes(y=pairid,x=variable,color=Annotation,shape=shape)) +
+  geom_point(size=5) +
+  xlab("Position") + 
+  scale_x_continuous(breaks = seq(0, 6200, by = 250)) +
+  theme_classic() +
+  scale_y_discrete("PairID",labels =c("82"="PairID 82","65"="PairID 65","14"="PairID 14","84"="PairID 84","57"="PairID 57","9"="PairID 9","73"="PairID 73","3"="PairID 3","36"="PairID 36","2"="PairID 2","48"="PairID 48","56"="PairID 56"),
+  expand = expansion(mult = c(.1, 2))) +
+  scale_color_manual(labels=c("synonymous"="Synonymous variant","missense"="Missense variant","intergenic"="Intergenic variant","upstream"="Upstream gene variant","ISE"="Insertion element","deletion"="Deletion"),
+                    values=c("synonymous"="#baa094","missense"="#55ad89","intergenic"="#8cc2ca","upstream"="#767676" ,"ISE"="#c3bc3f","deletion"="#6388b4"),
+                    name="Variation") +
+  theme(panel.grid.major.y = element_line(),
+        panel.grid.minor.y = element_line(),
+        text = element_text(size = 20),
+        axis.text.x=element_text(angle=45,hjust=1),
+        legend.text = element_text(size=20), legend.title = element_text(size=20),
+        legend.position = c(0.5, 0.7)) +
+  guides(colour = guide_legend(override.aes = list(size=5)))
+
+
+ggsave("20230801_bacteriocin_blast/plots/bac43_map_variation.png",plot=last_plot(),width=20,device="png")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ```{r enterocinA all}
+# entA <- read.csv("20230503_within-host/14_enterocinA_variation/summary/enterocinA_variation_summary_final.csv",sep='\t')
+# entA_pairID <- entA %>% group_by(pairid) %>% arrange(pairid) %>% filter(row_number()==1) %>% arrange(pairid) %>% ungroup()
+
+# entA_lowcov <- entA_pairID %>% select(-c("Clone","pairid")) %>% select(contains('.')) 
+# entA_lowcov_long <- pivot_longer(entA_lowcov,names_to= "Lowcov" ,values_to= "Lowcov_region",cols=everything()) %>% drop_na("Lowcov_region") 
+# entA_lowcov_counts <- entA_lowcov_long%>% group_by(Lowcov) %>% count(entA_lowcov_long$Lowcov_region)
+# colnames(entA_lowcov_counts) <- c("Lowcov","Lowcov_region","count")
+# entA_lowcov_counts[c('Start', 'Stop')] <- str_split_fixed(entA_lowcov_counts$Lowcov_region, '-', 2)
+
+# entA_IS <- entA_pairID %>% select(-c("Clone","pairid")) %>% select(contains('IS')) 
+# entA_IS_long <- pivot_longer(entA_IS,names_to= "ISE" ,values_to= "Position",cols=everything()) %>% drop_na("Position") 
+# entA_IS_counts <- entA_IS_long%>% group_by(Position) %>% count(entA_IS_long$ISE)
+# colnames(entA_IS_counts) <- c("Position","Annotation","count")
+# entA_IS_counts$shape <- rep("diamond",nrow(entA_IS_counts))
+# entA_IS_counts$legend <- rep("ISE",nrow(entA_IS_counts))
+
+# entA_var<- entA_pairID %>% select(-c("Clone","pairid")) %>% select(-(contains('.'))) %>% select(-(contains('IS')))
+# entA_var_long <- pivot_longer(entA_var,names_to= "Position" ,values_to= "Annotation",cols=everything()) %>% drop_na("Annotation") 
+# entA_var_long[c('X', 'Position')] <- str_split_fixed(entA_var_long$Position, 'X', 2)
+# entA_var_long[c('Annotation', 'Full_annotation')] <- str_split_fixed(entA_var_long$Annotation, '_', 2)
+# entA_var_long1 <- entA_var_long %>% select(Position,Annotation)
+# entA_var_long1$Position <- as.character(entA_var_long1$Position )
+# entA_var_counts <- entA_var_long1%>% group_by(Position) %>% count(entA_var_long1$Annotation)
+# colnames(entA_var_counts) <- c("Position","Annotation","count")
+# entA_var_counts$shape <- rep("circle",nrow(entA_var_counts))
+# entA_var_counts$legend <- rep("Variant",nrow(entA_var_counts))
+
+# entA_var_IS <- merge(entA_var_counts,entA_IS_counts,all=TRUE)
+# ```
+
+
+# ```{r enterocin A}
+# snp_data <- data.frame(
+#   SNP = entA_var_long$Annotation,
+#   Position = entA_var_long$Position,
+#   Value = rep(0.002, nrow(entA_var_long))
+# )
+
+# deletions_data <- data.frame(
+#   DeletionID = entA_lowcov_long$Lowcov_region,
+#   Start = entA_lowcov_long$Start,
+#   End = entA_lowcov_long$Stop,
+#   Value = rep(0.07, nrow(entA_lowcov_long))
+# )
+
+# gene_data <- data.frame(
+#   GeneName = c("entA", "entI", "entF","entK","entR","hyp1","hyp2","entT","entD","sppA_2","hyp3"),
+#   Start = c(246377, 246576, 246991,247177,248475,249930,245164,250658,252828,254228,255264),
+#   End = c(246574, 246887, 247137,248460,249227,250145,250400,252811,254195,255262,255785)
+# )
+
+# chromosome_length <- 256750
+
+# # Assuming snp_data and deletions_data are already defined as before
+
+# p<- ggplot() +
+#   geom_segment(data = snp_data, aes(x = Position, xend = Position, y = 0, yend = Value)) +
+#   geom_point(data = snp_data, aes(x = Position, y = Value), size = 4.5, color = "#990000" ) +
+#   theme(axis.text.x = element_text(angle = 0, hjust = 1)) +
+#   coord_cartesian(xlim = c(245800, chromosome_length), clip = "off") + 
+#   geom_rect(aes(xmin = 245800, xmax = chromosome_length, ymin = 0, ymax = 0.0004), fill = "black") +
+#   ylim(c(-0.0008,0.015)) +
+#   #geom_rect(aes(xmin = Start, xmax = End, ymin = 0, ymax = 0.0004), fill = "gray", data= deletions_data) + 
+#   geom_rect(aes(xmin = Start, xmax = End, ymin = -0.0003, ymax = -0.0005), fill = "#660066", data= gene_data) +
+#   geom_text(data = gene_data, aes(x = (Start + End) / 2, y = -0.0008, label = GeneName), size = 3, vjust = 0.5) +
+#   xlab("Position")+
+#   theme(legend.position = "none",
+#         panel.grid = element_blank(), axis.title.y = element_blank(),
+#         axis.text = element_blank(), axis.ticks = element_blank(), 
+#         panel.background = element_blank()) 
+# ```
+
+# ```{r lollipop entA}
+# SNP <- as.numeric(entA_var_IS$Position)
+# sample.gr <- GRanges("chr1", IRanges(SNP, width=1, names=entA_var_IS$Annotation))
+# sample.gr$score <- entA_var_IS$count
+# features <- GRanges("chr1", IRanges(c(246377, 246576, 246991,247177,248475,249930,250164,250658,252828,254228,255264), 
+#                                     width=c(198, 312, 147,1284,753,216,237,2154,1368,1035,522),
+#                                     names=c("entA", "entI", "entF","entK","entR","hyp1","hyp2","entT","entD","hyp3","hyp4")))
+# features$fill <- c("#6388b4","#ffae35","#ef6f6b","#8cc2ca","#55ad89","#808080","#808080","#c4bc3f","#bc7693","#808080","#808080")
+# sample.gr$shape <- entA_var_IS$shape
+# lolliplot(sample.gr, 
+#           features,ranges = GRanges("chr1", IRanges(246177,256268)),
+#           jitter="label",
+#           ylab="Number of PairIDs")
+# ```
