@@ -31,9 +31,10 @@ Make new directory "shortread" and add zipped shortread fastq files (should end 
 
 If doing a hybrid assembly, also make a directory "longread" and add zipped longread fastq files. Add isolates to the config file under the header "long_read_samples".
 
-Activate conda environment and load environment files
+Activate conda environment, load singularity for container files, and load environment files
 
     conda activate snakemake2
+    module load singularity
     snakemake --use-conda --conda-create-envs-only -j96 
 
 It may be necessary to add the conda bin to the path so conda can activate the environments
